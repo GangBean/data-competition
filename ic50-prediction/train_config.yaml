@@ -1,0 +1,9 @@
+data_dir: ./data
+model_dir: ./data/models
+
+lr: 1e-4
+loss: mse
+device: cpu
+epoch: 5
+batch_size: 32
+model_name: resnet
