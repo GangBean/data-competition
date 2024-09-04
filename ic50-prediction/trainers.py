@@ -9,7 +9,11 @@ from loguru import logger
 
 from datetime import datetime
 from models import SimpleImageRegressor
-import pytz
+
+import wandb
+import pandas as pd
+import numpy as np
+
 
 class Trainer:
     def __init__(self, cfg) -> None:
@@ -21,8 +25,9 @@ class Trainer:
         self.loss = self._loss()
 
     def _set_runname(self):
-        name: str = f"{self.cfg.model_name}_{datetime.now(pytz.timezone('Asia/Seoul'))}"
-        self.run_name = name
+        # name: str = f"{self.cfg.model_name}_{datetime.now(pytz.timezone('Asia/Seoul'))}"
+        # self.run_name = name
+        self.run_name = self.cfg.run_name
 
     def _device(self):
         if not torch.cuda.is_available():
@@ -58,7 +63,7 @@ class Trainer:
         torch.save(self.model.cpu().state_dict(), model_filename)
 
     def load_best_model(self):
-        logger.warning(f"[Trainer] best model을 불러옵니다.")
+        logger.info(f"[Trainer] best model을 불러옵니다.")
         model_filename: str = f'{os.path.join(self.cfg.model_dir, self.run_name)}.pt'
         if not os.path.exists(model_filename):
             logger.warning(f"[Trainer] 해당 파일이 존재하지 않습니다: {model_filename}")
@@ -71,12 +76,18 @@ class Trainer:
         for epoch in range(self.cfg.epoch):
             train_loss: float = self.train(train_dataloader)
             valid_loss: float = self.validate(valid_dataloader)
-            logger.info(f"epoch: {epoch+1}/{self.cfg.epoch} >> train loss: {train_loss:.4f}")
-            logger.info(f"valid loss: {valid_loss:.4f}")
+            logger.info(f'''\n[Trainer] epoch: {epoch} > train loss: {train_loss:.4f} / 
+                        valid loss: {valid_loss:.4f}''')
 
             if best_loss == .0 or valid_loss < best_loss:
                 best_loss = valid_loss
                 self._save_best_model()
+            
+            if self.cfg.wandb:
+                wandb.log({
+                    'train_loss': train_loss,
+                    'valid_loss': valid_loss,
+                })
 
     def train(self, train_dataloader) -> float:
         self.model.train()
@@ -85,7 +96,7 @@ class Trainer:
             X, Y = data['X'].to(self.device), data['Y'].to(self.device)
 
             pred = self.model(X)
-            loss: torch.Tensor = self.loss(pred.squeeze(), Y)
+            loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y))
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -102,7 +113,7 @@ class Trainer:
             X, Y = data['X'].to(self.device), data['Y'].to(self.device)
 
             pred = self.model(X)
-            loss: torch.Tensor = self.loss(pred.squeeze(), Y)
+            loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y))
 
             valid_loss += loss.item()
 
@@ -117,3 +128,10 @@ class Trainer:
             submission.extend(outputs.detach().numpy())
 
         return submission
+    
+    def inference(self, submission):
+        sample_df = pd.read_csv('./data/sample_submission.csv')
+        sample_df['IC50_nM'] = np.array(submission).reshape(-1)
+
+        output_name = self.cfg.run_name
+        sample_df.to_csv(f'./data/submissions/{output_name}.csv', index=False)

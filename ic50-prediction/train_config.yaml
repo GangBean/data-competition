@@ -7,3 +7,10 @@ device: cpu
 epoch: 5
 batch_size: 32
 model_name: resnet
+
+wandb: False # False
+project: ic50-prediction
+notes: ""
+tags: ["dacon", "ic50", "regression"]
+run_name: "dummy" # dummy parameter
+
