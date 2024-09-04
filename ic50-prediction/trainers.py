@@ -7,7 +7,6 @@ from torch.optim.adam import Optimizer, Adam
 from tqdm import tqdm
 from loguru import logger
 
-from datetime import datetime
 from models import SimpleImageRegressor
 
 import wandb
@@ -25,8 +24,6 @@ class Trainer:
         self.loss = self._loss()
 
     def _set_runname(self):
-        # name: str = f"{self.cfg.model_name}_{datetime.now(pytz.timezone('Asia/Seoul'))}"
-        # self.run_name = name
         self.run_name = self.cfg.run_name
 
     def _device(self):
@@ -130,8 +127,12 @@ class Trainer:
         return submission
     
     def inference(self, submission):
+        def pIC50_to_IC50(pic50_values):
+            """Convert pIC50 values to IC50 (nM)."""
+            return 10 ** (9 - pic50_values)
+        
         sample_df = pd.read_csv('./data/sample_submission.csv')
-        sample_df['IC50_nM'] = np.array(submission).reshape(-1)
+        sample_df['IC50_nM'] = pIC50_to_IC50(np.array(submission).reshape(-1))
 
         output_name = self.cfg.run_name
         sample_df.to_csv(f'./data/submissions/{output_name}.csv', index=False)
