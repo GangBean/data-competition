@@ -1,16 +1,13 @@
 import hydra
-from loguru import logger
-from omegaconf import DictConfig, OmegaConf
+
+from torch.utils.data import DataLoader
+
 from dataset import DataPreprocess, IC50Dataset
 from trainers import Trainer
 from utils import log_wandb
 
-from torch.utils.data import DataLoader
-
-import pandas as pd
-import numpy as np
-from datetime import datetime
-import pytz
+from omegaconf import DictConfig
+from loguru import logger
 
 
 @hydra.main(version_base=None, config_path="./", config_name="train_config")
@@ -41,12 +38,7 @@ def run(cfg: DictConfig):
     logger.info("[Train] 6. inference trainer...")
     trainer.load_best_model()
     submission = trainer.evaluate(test_dataloader)
-
-    sample_df = pd.read_csv('./data/sample_submission.csv')
-    sample_df['IC50_nM'] = np.array(submission).reshape(-1)
-
-    output_name = datetime.now(pytz.timezone("Asia/Seoul"))
-    sample_df.to_csv(f'./data/submissions/{output_name}.csv', index=False)
+    trainer.inference(submission)
 
     logger.info("[Train] end train...")
 

@@ -9,8 +9,10 @@ from loguru import logger
 
 from datetime import datetime
 from models import SimpleImageRegressor
-import pytz
+
 import wandb
+import pandas as pd
+import numpy as np
 
 
 class Trainer:
@@ -23,8 +25,9 @@ class Trainer:
         self.loss = self._loss()
 
     def _set_runname(self):
-        name: str = f"{self.cfg.model_name}_{datetime.now(pytz.timezone('Asia/Seoul'))}"
-        self.run_name = name
+        # name: str = f"{self.cfg.model_name}_{datetime.now(pytz.timezone('Asia/Seoul'))}"
+        # self.run_name = name
+        self.run_name = self.cfg.run_name
 
     def _device(self):
         if not torch.cuda.is_available():
@@ -125,3 +128,10 @@ class Trainer:
             submission.extend(outputs.detach().numpy())
 
         return submission
+    
+    def inference(self, submission):
+        sample_df = pd.read_csv('./data/sample_submission.csv')
+        sample_df['IC50_nM'] = np.array(submission).reshape(-1)
+
+        output_name = self.cfg.run_name
+        sample_df.to_csv(f'./data/submissions/{output_name}.csv', index=False)
