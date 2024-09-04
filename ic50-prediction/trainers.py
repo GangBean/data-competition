@@ -8,6 +8,8 @@ from tqdm import tqdm
 from loguru import logger
 
 from models import SimpleImageRegressor, SimpleDNN
+from utils import pIC50_to_IC50
+from metrics import score
 
 import wandb
 import pandas as pd
@@ -49,7 +51,9 @@ class Trainer:
         elif model == 'bert':
             return SimpleImageRegressor(embedding_size=300 * 300 * 3)
         elif model == 'dnn':
-            return SimpleDNN(input_dim=2_048, emb_dims=self.cfg.emb_dims)
+            return SimpleDNN(
+                input_dim=2_048 + 300 * 300 * 3
+                , emb_dims=self.cfg.emb_dims)
         else:
             raise ValueError(f"해당하는 모델이 존재하지 않습니다: {self.cfg.model_name}")
         
@@ -72,27 +76,40 @@ class Trainer:
     def run(self, train_dataloader, valid_dataloader):
         self._set_runname()
         best_loss = .0
+        patience = 0
         for epoch in range(self.cfg.epoch):
-            train_loss: float = self.train(train_dataloader)
-            valid_loss: float = self.validate(valid_dataloader)
-            logger.info(f'''\n[Trainer] epoch: {epoch} > train loss: {train_loss:.4f} / 
-                        valid loss: {valid_loss:.4f}''')
+            train_loss, train_score = self.train(train_dataloader)
+            valid_loss, valid_score = self.validate(valid_dataloader)
+            logger.info(f'''\n[Trainer] epoch: {epoch + 1} > train loss: {train_loss:.4f} / train_score: {train_score:.4f}
+                        valid loss: {valid_loss:.4f} / valid_score: {valid_score:.4f}''')
 
             if best_loss == .0 or valid_loss < best_loss:
                 best_loss = valid_loss
                 self._save_best_model()
+                patience = 0
             
             if self.cfg.wandb:
                 wandb.log({
                     'train_loss': train_loss,
                     'valid_loss': valid_loss,
+                    'train_score': train_score,
+                    'valid_score': valid_score,
                 })
+            
+            if patience >= self.cfg.patience:
+                logger.info(f"[Trainer] 학습결과가 개선되지 않아 조기 종료합니다: {epoch + 1} / {self.cfg.epoch}")
+                break
+            else:
+                patience += 1
 
     def train(self, train_dataloader) -> float:
         self.model.train()
         train_loss: float = .0
+        actual_pic50 = []
+        actual_ic50 = []
+        pred_pic50 = []
         for data in tqdm(train_dataloader):
-            X, Y = data['X'].to(self.device), data['Y'].to(self.device)
+            X, Y = data['X'].to(self.device), data['pIC50'].to(self.device)
 
             pred = self.model(X)
             loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y))
@@ -103,20 +120,39 @@ class Trainer:
 
             train_loss += loss.item()
 
-        return train_loss
+            actual_pic50.extend(data['pIC50'].numpy())
+            actual_ic50.extend(data['IC50'].numpy())
+            pred_pic50.extend(pred.squeeze().detach().numpy())
+
+        actual_pic50 = np.array(actual_pic50)
+        actual_ic50 = np.array(actual_ic50)
+        pred_pic50 = np.array(pred_pic50)
+
+        return train_loss, score(rmse=train_loss, actual_ic50=actual_ic50, pred_pic50=pred_pic50, actual_pic50=actual_pic50)
     
     def validate(self, valid_dataloader) -> float:
         self.model.eval()
         valid_loss: float = .0
+        actual_pic50 = []
+        actual_ic50 = []
+        pred_pic50 = []
         for data in tqdm(valid_dataloader):
-            X, Y = data['X'].to(self.device), data['Y'].to(self.device)
+            X, Y = data['X'].to(self.device), data['pIC50'].to(self.device)
 
             pred = self.model(X)
             loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y))
 
             valid_loss += loss.item()
 
-        return valid_loss
+            actual_pic50.extend(data['pIC50'].numpy())
+            actual_ic50.extend(data['IC50'].numpy())
+            pred_pic50.extend(pred.squeeze().detach().numpy())
+        
+        actual_pic50 = np.array(actual_pic50)
+        actual_ic50 = np.array(actual_ic50)
+        pred_pic50 = np.array(pred_pic50)
+
+        return valid_loss, score(rmse=valid_loss, actual_ic50=actual_ic50, pred_pic50=pred_pic50, actual_pic50=actual_pic50)
     
     def evaluate(self, test_dataloader):
         self.model.eval()
@@ -129,10 +165,6 @@ class Trainer:
         return submission
     
     def inference(self, submission):
-        def pIC50_to_IC50(pic50_values):
-            """Convert pIC50 values to IC50 (nM)."""
-            return 10 ** (9 - pic50_values)
-        
         sample_df = pd.read_csv('./data/sample_submission.csv')
         sample_df['IC50_nM'] = pIC50_to_IC50(np.array(submission).reshape(-1))
 

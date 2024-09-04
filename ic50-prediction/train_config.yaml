@@ -4,15 +4,16 @@ model_dir: ./data/models
 lr: 1e-4
 loss: mse
 device: cpu
-epoch: 5
+epoch: 100
 batch_size: 32
 model_name: dnn # resnet
 seed: 42
+patience: 5
 
 wandb: True # False
 project: ic50-prediction
 notes: ""
-tags: ["dacon", "ic50", "regression"]
+tags: ["dacon", "ic50", "regression", "img", "bitform", "img_norm"]
 run_name: "dummy" # dummy parameter
 
-emb_dims: [512, 512, 256, 64]
+emb_dims: [1024, 1024, 512, 512, 256, 256, 128, 128, 64, 64, 32, 32]

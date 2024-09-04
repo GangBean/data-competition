@@ -42,3 +42,7 @@ def log_wandb(func):
             wandb.finish()
         return result
     return wrapper
+
+def pIC50_to_IC50(pic50_values):
+    """Convert pIC50 values to IC50 (nM)."""
+    return 10 ** (9 - pic50_values)
