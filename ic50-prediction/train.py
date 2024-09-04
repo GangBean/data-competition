@@ -3,6 +3,7 @@ from loguru import logger
 from omegaconf import DictConfig, OmegaConf
 from dataset import DataPreprocess, IC50Dataset
 from trainers import Trainer
+from utils import log_wandb
 
 from torch.utils.data import DataLoader
 
@@ -13,6 +14,7 @@ import pytz
 
 
 @hydra.main(version_base=None, config_path="./", config_name="train_config")
+@log_wandb
 def run(cfg: DictConfig):
     logger.info("[Train] start train...")
 
