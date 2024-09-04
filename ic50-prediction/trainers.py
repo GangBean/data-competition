@@ -7,7 +7,7 @@ from torch.optim.adam import Optimizer, Adam
 from tqdm import tqdm
 from loguru import logger
 
-from models import SimpleImageRegressor
+from models import SimpleImageRegressor, SimpleDNN
 
 import wandb
 import pandas as pd
@@ -48,6 +48,8 @@ class Trainer:
             return SimpleImageRegressor(embedding_size=300 * 300 * 3)
         elif model == 'bert':
             return SimpleImageRegressor(embedding_size=300 * 300 * 3)
+        elif model == 'dnn':
+            return SimpleDNN(input_dim=2_048, emb_dims=self.cfg.emb_dims)
         else:
             raise ValueError(f"해당하는 모델이 존재하지 않습니다: {self.cfg.model_name}")
         
