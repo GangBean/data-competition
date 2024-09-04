@@ -75,7 +75,8 @@ class IC50Dataset(Dataset):
         item = self.data.iloc[index]
         return {
             'X': self.transform(item['img']).view(-1,).to(torch.float32),
-            'Y': item['IC50_nM'].astype('float32')
+            # 'Y': item['IC50_nM'].astype('float32'),
+            'Y': item['pIC50'].astype('float32'),
         } if self.train else {
             'X': self.transform(item['img']).view(-1,).to(torch.float32),
         }
