@@ -158,6 +158,7 @@ cython_debug/
 data/
 outputs/
 .DS_Store
+wandb
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
