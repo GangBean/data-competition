@@ -2,45 +2,104 @@ import hydra
 
 from torch.utils.data import DataLoader
 
-from dataset import DataPreprocess, IC50Dataset
+from dataset import (
+    DataPreprocess, IC50Dataset,
+    SimpleDNNPreprocess, SimpleDNNDataset,
+)
 from trainers import Trainer
-from utils import log_wandb
+from utils import log_wandb, set_seed
 
 from omegaconf import DictConfig
 from loguru import logger
 
+import numpy as np
+import wandb
 
-@hydra.main(version_base=None, config_path="./", config_name="train_config")
-@log_wandb
-def run(cfg: DictConfig):
-    logger.info("[Train] start train...")
+def run_fold(cfg, fold, fold_dataset, test_df):
+    logger.info(f"[Train]_{fold + 1} 2. split data...")
+    if cfg.model_name in ('dnn', ):
+        train_data = SimpleDNNDataset(fold_dataset['train_df'], train=True)
+        valid_data = SimpleDNNDataset(fold_dataset['valid_df'], train=True)
+        test_data = SimpleDNNDataset(test_df, train=False)
+    else:
+        train_data = IC50Dataset(fold_dataset['train_df'], train=True)
+        valid_data = IC50Dataset(fold_dataset['valid_df'], train=True)
+        test_data = IC50Dataset(test_df, train=False)
 
-    logger.info("[Train] 1. preprocess data...")
-    preprocess = DataPreprocess(cfg.data_dir)
-
-    logger.info("[Train] 2. split data...")
-    train_df, valid_df, test_df = preprocess.split()
-    train_data = IC50Dataset(train_df, train=True)
-    valid_data = IC50Dataset(valid_df, train=True)
-    test_data = IC50Dataset(test_df, train=False)
-
-    logger.info("[Train] 3. prepare dataloader...")
+    logger.info(f"[Train]_{fold + 1} 3. prepare dataloader...")
     train_dataloader = DataLoader(train_data, batch_size=cfg.batch_size)
     valid_dataloader = DataLoader(valid_data, batch_size=cfg.batch_size)
     test_dataloader = DataLoader(test_data)
 
-    logger.info("[Train] 4. prepare trainer...")
-    trainer = Trainer(cfg)
+    logger.info(f"[Train]_{fold + 1} 4. prepare trainer...")
+    trainer = Trainer(cfg, fold=fold)
 
-    logger.info("[Train] 5. run trainer...")
-    trainer.run(train_dataloader, valid_dataloader)
+    logger.info(f"[Train]_{fold + 1} 5. run trainer...")
+    best_valid_loss, best_valid_score = trainer.run(train_dataloader, valid_dataloader)
 
-    logger.info("[Train] 6. inference trainer...")
+    logger.info(f"[Train]_{fold + 1} 6. inference trainer...")
     trainer.load_best_model()
-    submission = trainer.evaluate(test_dataloader)
-    trainer.inference(submission)
+    return trainer.evaluate(test_dataloader), best_valid_loss, best_valid_score
 
-    logger.info("[Train] end train...")
+@hydra.main(version_base=None, config_path="./", config_name="train_config")
+@log_wandb
+def run(cfg: DictConfig):
+    set_seed(cfg.seed)
+
+    logger.info("[Train] start train...")
+    logger.info("[Train] 1. preprocess data...")
+    if cfg.model_name in ('dnn', ):
+        preprocess = SimpleDNNPreprocess(cfg.data_dir)
+    else:
+        preprocess = DataPreprocess(cfg.data_dir)
+
+    if cfg.k_fold >= 2:
+        k_folded_datasets, test_df = preprocess.k_fold_split(k_fold=cfg.k_fold, seed=cfg.seed)
+
+        submissions, valid_losses, valid_scores = [], [], []
+        for fold in range(cfg.k_fold):
+            submission, best_valid_loss, best_valid_score = run_fold(cfg, fold, k_folded_datasets[fold], test_df)
+            submissions.append(submission)
+            valid_losses.append(best_valid_loss)
+            valid_scores.append(best_valid_score)
+
+        logger.info(f"[Output] K-fold loss: {np.mean(best_valid_loss):.4f} / score: {np.mean(best_valid_score):.4f}")
+        wandb.log({
+            'k-fold loss': np.mean(best_valid_loss),
+            'k-fold score': np.mean(best_valid_score),
+        })
+        
+        trainer = Trainer(cfg)
+        trainer.inference(np.mean(submissions, axis=0))
+
+    else:
+        logger.info("[Train] 2. split data...")
+        train_df, valid_df, test_df = preprocess.split(valid_ratio=cfg.valid_ratio)
+        if cfg.model_name in ('dnn', ):
+            train_data = SimpleDNNDataset(train_df, train=True)
+            valid_data = SimpleDNNDataset(valid_df, train=True)
+            test_data = SimpleDNNDataset(test_df, train=False)
+        else:
+            train_data = IC50Dataset(train_df, train=True)
+            valid_data = IC50Dataset(valid_df, train=True)
+            test_data = IC50Dataset(test_df, train=False)
+
+        logger.info("[Train] 3. prepare dataloader...")
+        train_dataloader = DataLoader(train_data, batch_size=cfg.batch_size)
+        valid_dataloader = DataLoader(valid_data, batch_size=cfg.batch_size)
+        test_dataloader = DataLoader(test_data)
+
+        logger.info("[Train] 4. prepare trainer...")
+        trainer = Trainer(cfg)
+
+        logger.info("[Train] 5. run trainer...")
+        trainer.run(train_dataloader, valid_dataloader)
+
+        logger.info("[Train] 6. inference trainer...")
+        trainer.load_best_model()
+        submission = trainer.evaluate(test_dataloader)
+        trainer.inference(submission)
+    logger.info("[Train] end run...")
 
 if __name__ == '__main__':
     run()

@@ -1,16 +1,21 @@
 data_dir: ./data
 model_dir: ./data/models
+valid_ratio: .2
+k_fold: 2
 
 lr: 1e-4
 loss: mse
 device: cpu
-epoch: 5
+epoch: 1
 batch_size: 32
-model_name: resnet
+seed: 42
+patience: 5
 
-wandb: False # False
+wandb: True # False
 project: ic50-prediction
-notes: ""
-tags: ["dacon", "ic50", "regression"]
+notes: "K-fold Cross Validation add data shuffle"
+tags: ["dacon", "ic50", "regression", "custom morgan", "k-fold", "cross validation", "shuffle"]
 run_name: "dummy" # dummy parameter
 
+model_name: dnn # resnet
+emb_dims: [1024, 1024, 512, 512, 256, 256, 128, 128, 64, 64, 32, 32]

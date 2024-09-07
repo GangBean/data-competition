@@ -1,10 +1,26 @@
+import os
+import random
 import wandb
 
-from functools import wraps
-
 from datetime import datetime
-import pytz
+from functools import wraps
+from loguru import logger
 
+import pytz
+import numpy as np
+import torch
+
+def set_seed(seed: int):
+    logger.info(f"[utils] set seed as {seed}...")
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    # some cudnn methods can be random even after fixing the seed
+    # unless you tell it to be deterministic
+    torch.backends.cudnn.deterministic = True
 
 def log_wandb(func):
     @wraps(func)
@@ -26,3 +42,7 @@ def log_wandb(func):
             wandb.finish()
         return result
     return wrapper
+
+def pIC50_to_IC50(pic50_values):
+    """Convert pIC50 values to IC50 (nM)."""
+    return 10 ** (9 - pic50_values)
