@@ -52,7 +52,7 @@ def run(cfg: DictConfig):
         preprocess = DataPreprocess(cfg.data_dir)
 
     if cfg.k_fold >= 2:
-        k_folded_datasets, test_df = preprocess.k_fold_split(k_fold=cfg.k_fold)
+        k_folded_datasets, test_df = preprocess.k_fold_split(k_fold=cfg.k_fold, seed=cfg.seed)
 
         submissions, valid_losses, valid_scores = [], [], []
         for fold in range(cfg.k_fold):

@@ -60,17 +60,19 @@ class DataPreprocess:
 
         return train_df, valid_df, self.test_df
     
-    def k_fold_split(self, k_fold: int = 5):
+    def k_fold_split(self, k_fold: int = 5, seed:int = 42):
         logger.info("[Preprocess] split info k-fold...")
         k_folded_datasets = dict()
-
-        size = len(self.train_df) // k_fold
+        
+        shuffled_df = self.train_df.sample(frac=1, random_state=seed).reset_index(drop=True)
+        size = len(shuffled_df) // k_fold
+        
         for fold in range(k_fold):
             valid_start_idx = fold * size
-            valid_end_idx = min(len(self.train_df), (fold + 1) * size)
+            valid_end_idx = min(len(shuffled_df), (fold + 1) * size)
 
-            valid_df = self.train_df.iloc[valid_start_idx:valid_end_idx]
-            train_df = self.train_df.drop(valid_df.index)
+            valid_df = shuffled_df.iloc[valid_start_idx:valid_end_idx]
+            train_df = shuffled_df.drop(valid_df.index)
             k_folded_datasets[fold] = {
                 'train_df': train_df,
                 'valid_df': valid_df,
