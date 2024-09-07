@@ -12,7 +12,6 @@ from torchvision import transforms
 from torch.utils.data import Dataset
 
 from loguru import logger
-from sklearn.preprocessing import StandardScaler
 
 
 class DataPreprocess:
@@ -60,6 +59,24 @@ class DataPreprocess:
         assert len(train_df) + len(valid_df) == len(self.train_df), f"train valid split fail: {len(train_df)} , {len(valid_df)} / {len(self.train_df)}"
 
         return train_df, valid_df, self.test_df
+    
+    def k_fold_split(self, k_fold: int = 5):
+        logger.info("[Preprocess] split info k-fold...")
+        k_folded_datasets = dict()
+
+        size = len(self.train_df) // k_fold
+        for fold in range(k_fold):
+            valid_start_idx = fold * size
+            valid_end_idx = min(len(self.train_df), (fold + 1) * size)
+
+            valid_df = self.train_df.iloc[valid_start_idx:valid_end_idx]
+            train_df = self.train_df.drop(valid_df.index)
+            k_folded_datasets[fold] = {
+                'train_df': train_df,
+                'valid_df': valid_df,
+            }
+
+        return k_folded_datasets, self.test_df
     
 class SimpleDNNPreprocess(DataPreprocess):
     def __init__(self, 

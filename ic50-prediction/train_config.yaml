@@ -1,6 +1,7 @@
 data_dir: ./data
 model_dir: ./data/models
-valid_ratio: .25
+valid_ratio: .2
+k_fold: 5
 
 lr: 1e-4
 loss: mse
@@ -13,8 +14,8 @@ patience: 5
 
 wandb: True # False
 project: ic50-prediction
-notes: "use less data to train(valid ratio .2 -> .25)"
-tags: ["dacon", "ic50", "regression", "custom morgan", "valid_ratio"]
+notes: "K-fold Cross Validation"
+tags: ["dacon", "ic50", "regression", "custom morgan", "k-fold", "cross validation"]
 run_name: "dummy" # dummy parameter
 
 emb_dims: [1024, 1024, 512, 512, 256, 256, 128, 128, 64, 64, 32, 32]

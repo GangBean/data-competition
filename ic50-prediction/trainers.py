@@ -17,9 +17,10 @@ import numpy as np
 
 
 class Trainer:
-    def __init__(self, cfg) -> None:
+    def __init__(self, cfg, fold: int=0) -> None:
         self.cfg = cfg
         self.device = self._device()
+        self.fold = fold
 
         self.model: nn.Module = self._model().to(self.device)
         self.optimizer: Optimizer = Adam(self.model.parameters(), lr=self.cfg.lr)
@@ -60,7 +61,7 @@ class Trainer:
         
     def _save_best_model(self):
         logger.info(f"[Trainer] best model을 저장합니다.")
-        model_filename: str = f'{os.path.join(self.cfg.model_dir, self.run_name)}.pt'
+        model_filename: str = f'{os.path.join(self.cfg.model_dir, self.run_name)}_{self.fold}.pt'
         if not os.path.exists(self.cfg.model_dir):
             logger.info(f"[Trainer] model 저장 경로를 생성합니다: {self.cfg.model_dir}")
             os.makedirs(self.cfg.model_dir, exist_ok=True)
@@ -68,7 +69,7 @@ class Trainer:
 
     def load_best_model(self):
         logger.info(f"[Trainer] best model을 불러옵니다.")
-        model_filename: str = f'{os.path.join(self.cfg.model_dir, self.run_name)}.pt'
+        model_filename: str = f'{os.path.join(self.cfg.model_dir, self.run_name)}_{self.fold}.pt'
         if not os.path.exists(model_filename):
             logger.warning(f"[Trainer] 해당 파일이 존재하지 않습니다: {model_filename}")
         self.model.load_state_dict(torch.load(model_filename, weights_only=True))
@@ -76,7 +77,8 @@ class Trainer:
 
     def run(self, train_dataloader, valid_dataloader):
         self._set_runname()
-        best_loss = .0
+        best_valid_loss = .0
+        best_valid_score = .0
         patience = 0
         for epoch in range(self.cfg.epoch):
             train_loss, train_score = self.train(train_dataloader)
@@ -84,8 +86,9 @@ class Trainer:
             logger.info(f'''\n[Trainer] epoch: {epoch + 1} > train loss: {train_loss:.4f} / train_score: {train_score:.4f}
                         valid loss: {valid_loss:.4f} / valid_score: {valid_score:.4f}''')
 
-            if best_loss == .0 or valid_loss < best_loss:
-                best_loss = valid_loss
+            if best_valid_loss == .0 or valid_loss < best_valid_loss:
+                best_valid_loss = valid_loss
+                best_valid_score = valid_score
                 self._save_best_model()
                 patience = 0
             
@@ -102,6 +105,7 @@ class Trainer:
                 break
             else:
                 patience += 1
+        return best_valid_loss, best_valid_score
 
     def train(self, train_dataloader) -> float:
         self.model.train()
