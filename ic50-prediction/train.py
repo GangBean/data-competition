@@ -11,7 +11,9 @@ from utils import log_wandb, set_seed
 
 from omegaconf import DictConfig
 from loguru import logger
+
 import numpy as np
+import wandb
 
 def run_fold(cfg, fold, fold_dataset, test_df):
     logger.info(f"[Train]_{fold + 1} 2. split data...")
@@ -62,6 +64,10 @@ def run(cfg: DictConfig):
             valid_scores.append(best_valid_score)
 
         logger.info(f"[Output] K-fold loss: {np.mean(best_valid_loss):.4f} / score: {np.mean(best_valid_score):.4f}")
+        wandb.log({
+            'k-fold loss': np.mean(best_valid_loss),
+            'k-fold score': np.mean(best_valid_score),
+        })
         
         trainer = Trainer(cfg)
         trainer.inference(np.mean(submissions, axis=0))
