@@ -48,7 +48,7 @@ class SimpleDNN(nn.Module):
         mask = torch.zeros_like(x).int()
         mask[x != 0] = 1
         mask = mask.view(batch_size, -1)
-        output = mask * indices
+        output = mask * indices.to(mask.device)
         return output
 
 class CountMorganEmbedding(nn.Module):

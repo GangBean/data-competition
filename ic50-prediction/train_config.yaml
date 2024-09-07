@@ -1,20 +1,20 @@
 data_dir: ./data
 model_dir: ./data/models
 valid_ratio: .2
-k_fold: 0
+k_fold: 5
 
 lr: 1e-4
 loss: mse
-device: cpu
-epoch: 1
+device: cuda # cpu
+epoch: 100
 batch_size: 32
 seed: 42
 patience: 5
 
-wandb: False # False
+wandb: True # False
 project: ic50-prediction
-notes: "count morgan embedding"
-tags: ["dacon", "ic50", "regression", "custom morgan", "k-fold", "cross validation", "shuffle"]
+notes: "count morgan fingerprint embedding"
+tags: ["dacon", "ic50", "regression", "custom morgan", "k-fold", "cross validation", "shuffle", "CMF"]
 run_name: "dummy" # dummy parameter
 
 model_name: dnn # resnet

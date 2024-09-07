@@ -1,4 +1,4 @@
-import os
+import os, copy
 
 import torch
 import torch.nn as nn
@@ -66,7 +66,8 @@ class Trainer:
         if not os.path.exists(self.cfg.model_dir):
             logger.info(f"[Trainer] model 저장 경로를 생성합니다: {self.cfg.model_dir}")
             os.makedirs(self.cfg.model_dir, exist_ok=True)
-        torch.save(self.model.cpu().state_dict(), model_filename)
+        torch.save(copy.deepcopy(self.model).cpu().state_dict(), model_filename)
+        # self.model = self.model.to(self.device)
 
     def load_best_model(self):
         logger.info(f"[Trainer] best model을 불러옵니다.")
@@ -128,7 +129,7 @@ class Trainer:
 
             actual_pic50.extend(data['pIC50'].numpy())
             actual_ic50.extend(data['IC50'].numpy())
-            pred_pic50.extend(pred.squeeze().detach().numpy())
+            pred_pic50.extend(pred.squeeze().detach().cpu().numpy())
 
         actual_pic50 = np.array(actual_pic50)
         actual_ic50 = np.array(actual_ic50)
@@ -152,7 +153,7 @@ class Trainer:
 
             actual_pic50.extend(data['pIC50'].numpy())
             actual_ic50.extend(data['IC50'].numpy())
-            pred_pic50.extend(pred.squeeze().detach().numpy())
+            pred_pic50.extend(pred.squeeze().detach().cpu().numpy())
         
         actual_pic50 = np.array(actual_pic50)
         actual_ic50 = np.array(actual_ic50)
@@ -164,9 +165,9 @@ class Trainer:
         self.model.eval()
         submission = []
         for data in tqdm(test_dataloader):
-            images = data['X']
+            images = data['X'].to(self.device)
             outputs = self.model(images)
-            submission.extend(outputs.detach().numpy())
+            submission.extend(outputs.detach().cpu().numpy())
 
         return submission
     
@@ -175,4 +176,8 @@ class Trainer:
         sample_df['IC50_nM'] = pIC50_to_IC50(np.array(submission).reshape(-1))
 
         output_name = self.cfg.run_name
-        sample_df.to_csv(f'./data/submissions/{output_name}.csv', index=False)
+        submission_dir = os.path.join(self.cfg.data_dir, 'submissions')
+        if not os.path.exists(submission_dir):
+            logger.info(f"[Trainer] submission 저장 경로를 생성합니다: {submission_dir}")
+            os.makedirs(submission_dir, exist_ok=True)
+        sample_df.to_csv(f'{submission_dir}/{output_name}.csv', index=False)
