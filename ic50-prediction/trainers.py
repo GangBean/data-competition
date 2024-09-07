@@ -55,7 +55,8 @@ class Trainer:
             return SimpleDNN(
                 # input_dim=2_048 + 300 * 300 * 3
                 input_dim= 13_279 * 4
-                , emb_dims=self.cfg.emb_dims)
+                , embed_dim=self.cfg.embed_dim
+                , layer_dims=self.cfg.layer_dims)
         else:
             raise ValueError(f"해당하는 모델이 존재하지 않습니다: {self.cfg.model_name}")
         
