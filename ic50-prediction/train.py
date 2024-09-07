@@ -26,7 +26,7 @@ def run(cfg: DictConfig):
         preprocess = DataPreprocess(cfg.data_dir)
 
     logger.info("[Train] 2. split data...")
-    train_df, valid_df, test_df = preprocess.split()
+    train_df, valid_df, test_df = preprocess.split(valid_ratio=cfg.valid_ratio)
     if cfg.model_name in ('dnn', ):
         train_data = SimpleDNNDataset(train_df, train=True)
         valid_data = SimpleDNNDataset(valid_df, train=True)

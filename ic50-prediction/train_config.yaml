@@ -1,5 +1,6 @@
 data_dir: ./data
 model_dir: ./data/models
+valid_ratio: .25
 
 lr: 1e-4
 loss: mse
@@ -12,8 +13,8 @@ patience: 5
 
 wandb: True # False
 project: ic50-prediction
-notes: ""
-tags: ["dacon", "ic50", "regression", "img", "bitform", "img_norm"]
+notes: "use less data to train(valid ratio .2 -> .25)"
+tags: ["dacon", "ic50", "regression", "custom morgan", "valid_ratio"]
 run_name: "dummy" # dummy parameter
 
 emb_dims: [1024, 1024, 512, 512, 256, 256, 128, 128, 64, 64, 32, 32]
