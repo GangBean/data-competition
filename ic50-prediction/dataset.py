@@ -1,7 +1,7 @@
 import os, random
 
 from rdkit import Chem
-from rdkit.Chem import Draw, AllChem
+from rdkit.Chem import Draw, AllChem, DataStructs
 
 import pandas as pd
 import numpy as np
@@ -12,6 +12,7 @@ from torchvision import transforms
 from torch.utils.data import Dataset
 
 from loguru import logger
+from tqdm import tqdm
 
 
 class DataPreprocess:
@@ -187,6 +188,28 @@ class SimpleDNNPreprocess(DataPreprocess):
         
         self.train_df['morgan_embedding'] = self.train_df['morgan_embedding'].apply(standardization)
         self.test_df['morgan_embedding'] = self.train_df['morgan_embedding'].apply(standardization)
+
+        logger.info("[SimpleDNNPreprocess] Similarities...")
+        def smiles_to_fingerprint(smiles):
+            mol = Chem.MolFromSmiles(smiles)
+            morgan_gen = AllChem.GetMorganGenerator()
+            return morgan_gen.GetSparseCountFingerprint(mol)
+        
+        self.train_df['fingerprint'] = self.train_df['Smiles'].apply(smiles_to_fingerprint)
+        self.test_df['fingerprint'] = self.test_df['Smiles'].apply(smiles_to_fingerprint)
+
+        train_fps = self.train_df['fingerprint'].tolist()
+
+        def similarities(fp, train_fp=train_fps):
+            output = []
+            for train_fp in train_fps:
+                output.append(DataStructs.TanimotoSimilarity(fp,train_fp))
+            return output
+    
+        tqdm.pandas()
+        self.train_df['similarities'] = self.train_df['fingerprint'].progress_apply(similarities)
+        self.test_df['similarities'] = self.test_df['fingerprint'].progress_apply(similarities)
+
         logger.info("[SimpleDNNPreprocess] end preprocess datas...")
 
 
@@ -228,11 +251,13 @@ class SimpleDNNDataset(Dataset):
             # 'X': item['X'].astype('float32'),
             # 'X': item['fingerprint'].astype('float32'),
             'X': item['morgan_embedding'].flatten().astype('float32'),
+            'Similarities': np.array(item['similarities']).astype('float32'),
             'pIC50': item['pIC50'].astype('float32'),
             'IC50': item['IC50_nM'].astype('float32'),
         } if self.train else {
             # 'X': item['X'].astype('float32'),
             # 'X': item['fingerprint'].astype('float32'),
             'X': item['morgan_embedding'].flatten().astype('float32'),
+            'Similarities': np.array(item['similarities']).astype('float32'),
         }
     
