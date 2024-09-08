@@ -119,7 +119,7 @@ class Trainer:
             X, Y = data['X'].to(self.device), data['pIC50'].to(self.device)
 
             pred = self.model(X)
-            loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y))
+            loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y.squeeze()))
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -129,7 +129,7 @@ class Trainer:
 
             actual_pic50.extend(data['pIC50'].numpy())
             actual_ic50.extend(data['IC50'].numpy())
-            pred_pic50.extend(pred.squeeze().detach().cpu().numpy())
+            pred_pic50.extend(pred.view(X.size(0),).detach().cpu().numpy())
 
         actual_pic50 = np.array(actual_pic50)
         actual_ic50 = np.array(actual_ic50)
@@ -147,13 +147,13 @@ class Trainer:
             X, Y = data['X'].to(self.device), data['pIC50'].to(self.device)
 
             pred = self.model(X)
-            loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y))
+            loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y.squeeze()))
 
             valid_loss += loss.item()
 
             actual_pic50.extend(data['pIC50'].numpy())
             actual_ic50.extend(data['IC50'].numpy())
-            pred_pic50.extend(pred.squeeze().detach().cpu().numpy())
+            pred_pic50.extend(pred.view(X.size(0)).detach().cpu().numpy())
         
         actual_pic50 = np.array(actual_pic50)
         actual_ic50 = np.array(actual_ic50)
