@@ -1,4 +1,7 @@
+import torch
 import torch.nn as nn
+
+from loguru import logger
 
 class SimpleImageRegressor(nn.Module):
     def __init__(self, embedding_size):
@@ -9,23 +12,81 @@ class SimpleImageRegressor(nn.Module):
         return self.fc(x)
 
 class SimpleDNN(nn.Module):
-    def __init__(self, input_dim: int, emb_dims: list[int], dropout_rate: float=.5):
+    def __init__(self, input_dim: int, layer_dims: list[int], embed_dim: int, dropout_rate: float=.5, type: str = 'count'):
         super(SimpleDNN, self).__init__()
         self.input_dim: int = input_dim
-        self.emb_dims: list[int] = [input_dim] + emb_dims
+        self.layer_dims: list[int] = [input_dim * embed_dim + 1952] + layer_dims
+        self.embed_dim: int = embed_dim
         self.dropout_rate: float = dropout_rate
         self.layers: nn.Module = self._layers()
+        if type == 'count':
+            self.embedding: nn.Module = CountMorganEmbedding(self.embed_dim)
+        elif type == 'atom':
+            self.embedding: nn.Module = CountMorganAtomEmbedding(self.embed_dim)
+
+    def _init_weights(self):
+        for child in self.children():
+            if isinstance(child, nn.Sequential):
+                for grand_child in child.children():
+                    if isinstance(grand_child, nn.Linear):
+                        torch.nn.init.kaiming_uniform_(grand_child.weight)
+            else:
+                torch.nn.init.xavier_normal_(child.weight)
 
     def _layers(self):
         layers = []
-        for i in range(len(self.emb_dims) - 1):
-            layers.append(nn.LayerNorm(self.emb_dims[i]))
-            layers.append(nn.Linear(self.emb_dims[i], self.emb_dims[i+1]))
+        for i in range(len(self.layer_dims) - 1):
+            layers.append(nn.LayerNorm(self.layer_dims[i]))
+            layers.append(nn.Linear(self.layer_dims[i], self.layer_dims[i+1]))
             layers.append(nn.ReLU())
             layers.append(nn.Dropout(self.dropout_rate))
-        layers.append(nn.Linear(self.emb_dims[-1], 1)) # FC layer
+        layers.append(nn.Linear(self.layer_dims[-1], 1)) # FC layer
 
         return nn.Sequential(*layers)
     
-    def forward(self, x):
+    def forward(self, x, similarity):
+        x = self._transform(x)
+        # logger.info(f"before embedding: {x.size()}")
+        x = self.embedding(x)
+        # logger.info(f"after embedding: {x.size()}")
+        x = x.view(x.size(0), -1)
+        x = torch.concat([x, similarity], dim=-1)
+        # logger.info(f"after concat: {x.size()}")
         return self.layers(x)
+    
+    def _transform(self, x):
+        # logger.info(f"transform input: {x.size()}")
+        batch_size, indice_size = x.size()
+        indices = torch.arange(indice_size) + 1 # plus 1 for padding embedding
+        mask = torch.zeros_like(x).int()
+        mask[x != 0] = 1
+        mask = mask.view(batch_size, -1)
+        output = mask * indices.to(mask.device)
+        return output
+
+class CountMorganEmbedding(nn.Module):
+    def __init__(self, embed_dim:int, bit_size:int = 13_279, radius_size:int = 4):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.bit_size = bit_size
+        self.radius_size = radius_size
+        self.embedding = nn.Embedding(self.bit_size * self.radius_size + 1, self.embed_dim, padding_idx=0)
+
+    def forward(self, x):
+        '''
+            input:
+                size: (batch, bit_size * radius_size)
+            output:
+                size: (batch, self.embed_dim)
+        '''
+        return torch.mean(self.embedding(x), dim=1)
+    
+class CountMorganAtomEmbedding(nn.Module):
+    def __init__(self, embed_dim: int, atom_count:int = 13_279 * 72):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.atom_count = atom_count
+        self.atom_embedding = nn.Embedding(self.atom_count + 1, self.embed_dim, padding_idx=0)
+
+    def forward(self, x):
+        return torch.mean(self.atom_embedding(x), dim=1)
