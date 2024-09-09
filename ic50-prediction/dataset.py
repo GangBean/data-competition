@@ -210,6 +210,23 @@ class SimpleDNNPreprocess(DataPreprocess):
         self.train_df['similarities'] = self.train_df['fingerprint'].progress_apply(similarities)
         self.test_df['similarities'] = self.test_df['fingerprint'].progress_apply(similarities)
 
+        logger.info("[SimpleDNNPreprocess] morgan atom embedding...")
+        def atom_count_array(info, max_count: int = 72):
+            atoms = [max([value[0] for value in values]) for values in info.values()]
+            atom_count = dict(Counter(atoms))
+            output = {
+                idx: 0 for idx in range(max_count)
+            }
+            output.update(atom_count)
+
+            array = np.zeros(max_count)
+            for idx, count in output.items():
+                array[idx] = count
+            return array
+        
+        self.train_df['morgan_atom_embedding'] = self.train_df['morgan_info'].apply(atom_count_array)
+        self.test_df['morgan_atom_embedding'] = self.test_df['morgan_info'].apply(atom_count_array)
+
         logger.info("[SimpleDNNPreprocess] end preprocess datas...")
 
 
@@ -250,14 +267,16 @@ class SimpleDNNDataset(Dataset):
         return {
             # 'X': item['X'].astype('float32'),
             # 'X': item['fingerprint'].astype('float32'),
-            'X': item['morgan_embedding'].flatten().astype('float32'),
+            # 'X': item['morgan_embedding'].flatten().astype('float32'),
+            'X': item['morgan_atom_embedding'].astype('float32'),
             'Similarities': np.array(item['similarities']).astype('float32'),
             'pIC50': item['pIC50'].astype('float32'),
             'IC50': item['IC50_nM'].astype('float32'),
         } if self.train else {
             # 'X': item['X'].astype('float32'),
             # 'X': item['fingerprint'].astype('float32'),
-            'X': item['morgan_embedding'].flatten().astype('float32'),
+            # 'X': item['morgan_embedding'].flatten().astype('float32'),
+            'X': item['morgan_atom_embedding'].astype('float32'),
             'Similarities': np.array(item['similarities']).astype('float32'),
         }
     

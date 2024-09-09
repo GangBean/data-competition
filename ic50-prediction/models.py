@@ -21,8 +21,8 @@ class SimpleDNN(nn.Module):
         self.layers: nn.Module = self._layers()
         if type == 'count':
             self.embedding: nn.Module = CountMorganEmbedding(self.embed_dim)
-        # elif type == 'atom':
-        #     self.embedding: nn.Module = CountMorganAtomEmbedding(self.embed_dim)
+        elif type == 'atom':
+            self.embedding: nn.Module = CountMorganAtomEmbedding(self.embed_dim)
 
     def _init_weights(self):
         for child in self.children():
@@ -57,7 +57,7 @@ class SimpleDNN(nn.Module):
     def _transform(self, x):
         # logger.info(f"transform input: {x.size()}")
         batch_size, indice_size = x.size()
-        indices = torch.arange(indice_size) + 1
+        indices = torch.arange(indice_size) + 1 # plus 1 for padding embedding
         mask = torch.zeros_like(x).int()
         mask[x != 0] = 1
         mask = mask.view(batch_size, -1)
@@ -81,12 +81,12 @@ class CountMorganEmbedding(nn.Module):
         '''
         return torch.mean(self.embedding(x), dim=1)
     
-# class CountMorganAtomEmbedding(nn.Module):
-#     def __init__(self, embed_dim: int, atom_count:int = 13_279 * 71):
-#         super().__init__()
-#         self.embed_dim = embed_dim
-#         self.atom_count = atom_count
-#         self.atom_embedding = nn.Embedding(self.atom_count + 1, self.embed_dim, padding_idx=0)
+class CountMorganAtomEmbedding(nn.Module):
+    def __init__(self, embed_dim: int, atom_count:int = 13_279 * 72):
+        super().__init__()
+        self.embed_dim = embed_dim
+        self.atom_count = atom_count
+        self.atom_embedding = nn.Embedding(self.atom_count + 1, self.embed_dim, padding_idx=0)
 
-#     def forward(self, x):
-#         return torch.mean(self.atom_embedding(x), dim=-1)
+    def forward(self, x):
+        return torch.mean(self.atom_embedding(x), dim=1)

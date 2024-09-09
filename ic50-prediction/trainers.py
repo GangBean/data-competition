@@ -56,7 +56,8 @@ class Trainer:
                 # input_dim=2_048 + 300 * 300 * 3
                 input_dim= 1 # 13_279 * 4
                 , embed_dim=self.cfg.embed_dim
-                , layer_dims=self.cfg.layer_dims)
+                , layer_dims=self.cfg.layer_dims
+                , type=self.cfg.type)
         else:
             raise ValueError(f"해당하는 모델이 존재하지 않습니다: {self.cfg.model_name}")
         
