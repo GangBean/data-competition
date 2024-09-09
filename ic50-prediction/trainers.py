@@ -54,7 +54,7 @@ class Trainer:
         elif model == 'dnn':
             return SimpleDNN(
                 # input_dim=2_048 + 300 * 300 * 3
-                input_dim= 13_279 * 4
+                input_dim= 1 # 13_279 * 4
                 , embed_dim=self.cfg.embed_dim
                 , layer_dims=self.cfg.layer_dims)
         else:

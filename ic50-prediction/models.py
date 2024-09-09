@@ -12,14 +12,17 @@ class SimpleImageRegressor(nn.Module):
         return self.fc(x)
 
 class SimpleDNN(nn.Module):
-    def __init__(self, input_dim: int, layer_dims: list[int], embed_dim: int, dropout_rate: float=.5):
+    def __init__(self, input_dim: int, layer_dims: list[int], embed_dim: int, dropout_rate: float=.5, type: str = 'count'):
         super(SimpleDNN, self).__init__()
         self.input_dim: int = input_dim
         self.layer_dims: list[int] = [input_dim * embed_dim + 2408] + layer_dims
         self.embed_dim: int = embed_dim
         self.dropout_rate: float = dropout_rate
         self.layers: nn.Module = self._layers()
-        self.embedding: nn.Module = CountMorganEmbedding(self.embed_dim)
+        if type == 'count':
+            self.embedding: nn.Module = CountMorganEmbedding(self.embed_dim)
+        # elif type == 'atom':
+        #     self.embedding: nn.Module = CountMorganAtomEmbedding(self.embed_dim)
 
     def _init_weights(self):
         for child in self.children():
@@ -70,4 +73,20 @@ class CountMorganEmbedding(nn.Module):
         self.embedding = nn.Embedding(self.bit_size * self.radius_size + 1, self.embed_dim, padding_idx=0)
 
     def forward(self, x):
-        return self.embedding(x)
+        '''
+            input:
+                size: (batch, bit_size * radius_size)
+            output:
+                size: (batch, self.embed_dim)
+        '''
+        return torch.mean(self.embedding(x), dim=1)
+    
+# class CountMorganAtomEmbedding(nn.Module):
+#     def __init__(self, embed_dim: int, atom_count:int = 13_279 * 71):
+#         super().__init__()
+#         self.embed_dim = embed_dim
+#         self.atom_count = atom_count
+#         self.atom_embedding = nn.Embedding(self.atom_count + 1, self.embed_dim, padding_idx=0)
+
+#     def forward(self, x):
+#         return torch.mean(self.atom_embedding(x), dim=-1)
