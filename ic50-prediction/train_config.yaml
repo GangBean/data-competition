@@ -13,10 +13,10 @@ patience: 10
 
 wandb: True # False
 project: ic50-prediction
-notes: "mirrored layer"
-tags: ["dacon", "ic50", "regression", "custom morgan", "8-fold", "cross validation", "shuffle", "CMF"]
+notes: "similarities"
+tags: ["dacon", "ic50", "regression", "custom morgan", "8-fold", "cross validation", "shuffle", "CMF", "similarities"]
 run_name: "dummy" # dummy parameter
 
 model_name: dnn # resnet
-layer_dims: [1024, 1024, 512, 512, 256, 256, 128, 128, 64, 64, 32, 32, 64, 64, 128, 128, 256, 256, 512, 512, 1024, 1024]
+layer_dims: [1024, 1024, 512, 512, 256, 256, 128, 128, 64, 64, 32, 32] #, 64, 64, 128, 128, 256, 256, 512, 512, 1024, 1024]
 embed_dim: 8

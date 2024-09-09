@@ -15,11 +15,20 @@ class SimpleDNN(nn.Module):
     def __init__(self, input_dim: int, layer_dims: list[int], embed_dim: int, dropout_rate: float=.5):
         super(SimpleDNN, self).__init__()
         self.input_dim: int = input_dim
-        self.layer_dims: list[int] = [input_dim * embed_dim] + layer_dims
+        self.layer_dims: list[int] = [input_dim * embed_dim + 2408] + layer_dims
         self.embed_dim: int = embed_dim
         self.dropout_rate: float = dropout_rate
         self.layers: nn.Module = self._layers()
         self.embedding: nn.Module = CountMorganEmbedding(self.embed_dim)
+
+    def _init_weights(self):
+        for child in self.children():
+            if isinstance(child, nn.Sequential):
+                for grand_child in child.children():
+                    if isinstance(grand_child, nn.Linear):
+                        torch.nn.init.kaiming_uniform_(grand_child.weight)
+            else:
+                torch.nn.init.xavier_normal_(child.weight)
 
     def _layers(self):
         layers = []
@@ -32,13 +41,14 @@ class SimpleDNN(nn.Module):
 
         return nn.Sequential(*layers)
     
-    def forward(self, x):
+    def forward(self, x, similarity):
         x = self._transform(x)
         # logger.info(f"before embedding: {x.size()}")
         x = self.embedding(x)
         # logger.info(f"after embedding: {x.size()}")
         x = x.view(x.size(0), -1)
-        # logger.info(f"after view: {x.size()}")
+        x = torch.concat([x, similarity], dim=-1)
+        # logger.info(f"after concat: {x.size()}")
         return self.layers(x)
     
     def _transform(self, x):

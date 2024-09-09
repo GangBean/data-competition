@@ -116,9 +116,9 @@ class Trainer:
         actual_ic50 = []
         pred_pic50 = []
         for data in tqdm(train_dataloader):
-            X, Y = data['X'].to(self.device), data['pIC50'].to(self.device)
+            X, Y, similarities = data['X'].to(self.device), data['pIC50'].to(self.device), data['Similarities'].to(self.device)
 
-            pred = self.model(X)
+            pred = self.model(X, similarities)
             loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y.squeeze()))
 
             self.optimizer.zero_grad()
@@ -144,9 +144,9 @@ class Trainer:
         actual_ic50 = []
         pred_pic50 = []
         for data in tqdm(valid_dataloader):
-            X, Y = data['X'].to(self.device), data['pIC50'].to(self.device)
+            X, Y, similarities = data['X'].to(self.device), data['pIC50'].to(self.device), data['Similarities'].to(self.device)
 
-            pred = self.model(X)
+            pred = self.model(X, similarities)
             loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y.squeeze()))
 
             valid_loss += loss.item()
@@ -165,8 +165,9 @@ class Trainer:
         self.model.eval()
         submission = []
         for data in tqdm(test_dataloader):
-            images = data['X'].to(self.device)
-            outputs = self.model(images)
+            X, similarities = data['X'].to(self.device), data['Similarities'].to(self.device)
+
+            outputs = self.model(X, similarities)
             submission.extend(outputs.detach().cpu().numpy())
 
         return submission
