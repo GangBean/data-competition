@@ -184,7 +184,7 @@ class SimpleDNNPreprocess(DataPreprocess):
             mean = np.mean(embedding.flatten())
             std = np.std(embedding.flatten())
 
-            return embedding - mean / std
+            return (embedding - mean) / std
         
         self.train_df['morgan_embedding'] = self.train_df['morgan_embedding'].apply(standardization)
         self.test_df['morgan_embedding'] = self.train_df['morgan_embedding'].apply(standardization)

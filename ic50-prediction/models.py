@@ -15,7 +15,7 @@ class SimpleDNN(nn.Module):
     def __init__(self, input_dim: int, layer_dims: list[int], embed_dim: int, dropout_rate: float=.5, type: str = 'count'):
         super(SimpleDNN, self).__init__()
         self.input_dim: int = input_dim
-        self.layer_dims: list[int] = [input_dim * embed_dim + 2408] + layer_dims
+        self.layer_dims: list[int] = [input_dim * embed_dim + 1952] + layer_dims
         self.embed_dim: int = embed_dim
         self.dropout_rate: float = dropout_rate
         self.layers: nn.Module = self._layers()
