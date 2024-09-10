@@ -13,8 +13,8 @@ patience: 10
 
 wandb: True # False
 project: ic50-prediction
-notes: "origin train file"
-tags: ["dacon", "ic50", "regression", "custom morgan", "8-fold", "cross validation", "shuffle", "similarities", "mean reduce"]
+notes: "concat embedding and atom embedding"
+tags: ["dacon", "ic50", "regression", "custom morgan", "8-fold", "cross validation", "shuffle", "similarities", "mean reduce", "origin data", "concat"]
 run_name: "dummy" # dummy parameter
 
 model_name: dnn # resnet
