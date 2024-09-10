@@ -268,7 +268,7 @@ class SimpleDNNDataset(Dataset):
             # 'X': item['X'].astype('float32'),
             # 'X': item['fingerprint'].astype('float32'),
             # 'X': item['morgan_embedding'].flatten().astype('float32'),
-            'X': item['morgan_atom_embedding'].astype('float32'),
+            'X': np.concat([item['morgan_atom_embedding'].astype('float32'), item['morgan_embedding'].flatten().astype('float32')]),
             'Similarities': np.array(item['similarities']).astype('float32'),
             'pIC50': item['pIC50'].astype('float32'),
             'IC50': item['IC50_nM'].astype('float32'),
@@ -276,7 +276,7 @@ class SimpleDNNDataset(Dataset):
             # 'X': item['X'].astype('float32'),
             # 'X': item['fingerprint'].astype('float32'),
             # 'X': item['morgan_embedding'].flatten().astype('float32'),
-            'X': item['morgan_atom_embedding'].astype('float32'),
+            'X': np.concat([item['morgan_atom_embedding'].astype('float32'), item['morgan_embedding'].flatten().astype('float32')]),
             'Similarities': np.array(item['similarities']).astype('float32'),
         }
     
