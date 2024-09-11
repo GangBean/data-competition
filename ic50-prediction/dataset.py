@@ -279,4 +279,26 @@ class SimpleDNNDataset(Dataset):
             'X': np.concat([item['morgan_atom_embedding'].astype('float32'), item['morgan_embedding'].flatten().astype('float32')]),
             'Similarities': np.array(item['similarities']).astype('float32'),
         }
+
+XGBoostPreprocess = SimpleDNNPreprocess
+
+class XGBoostDataset:
+    def __init__(self, data, train: bool = True) -> None:
+        self.data: pd.DataFrame = self._transformed(data)
+        self.train: bool = train
     
+    def _transformed(self, data: pd.DataFrame) -> pd.DataFrame:
+        data.loc[:, 'X'] = data.apply(lambda row: np.concatenate(
+            # [row['morgan_embedding'].flatten(), 
+             [row['morgan_atom_embedding'].flatten(), row['similarities']]
+        ).astype('float32'), axis=1)
+        return data
+    
+    def __call__(self) -> dict:
+        return {
+            'X': self.data['X'],
+            'pIC50': self.data['pIC50'],
+            'IC50': self.data['IC50_nM'],
+        } if self.train else {
+            'X': self.data['X'],
+        }

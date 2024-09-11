@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import xgboost as xgb
 
 from loguru import logger
 
@@ -90,3 +91,29 @@ class CountMorganAtomEmbedding(nn.Module):
 
     def forward(self, x):
         return torch.mean(self.atom_embedding(x), dim=1)
+
+
+class XGBoost:
+    def __init__(self, cfg, device) -> None:
+        self.cfg = cfg
+        self.device = device
+        self.model: xgb.XGBRegressor = \
+            xgb.XGBRegressor(
+                n_estimators=cfg.n_estimators,
+                learning_rate=cfg.learning_rate,
+                max_depth=cfg.max_depth,
+                objective='reg:squarederror',
+                device=self.device,
+            )
+
+    def fit(self, X, Y, verbose=True):
+        self.model.fit(X, Y, eval_set=[(X, Y)], verbose=verbose)
+
+    def predict(self, X):
+        return self.model.predict(X)
+    
+    def save_model(self, filename: str):
+        self.model.save_model(filename)
+
+    def load_model(self, filename: str):
+        self.model.load_model(filename)
