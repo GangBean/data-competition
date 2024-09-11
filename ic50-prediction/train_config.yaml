@@ -1,7 +1,7 @@
 data_dir: ./data
 model_dir: ./data/models
 valid_ratio: .3
-k_fold: 10
+k_fold: 5
 
 lr: 1e-4
 loss: mse
@@ -13,8 +13,8 @@ patience: 10
 
 wandb: True # False
 project: ic50-prediction
-notes: "gasteiger and moments"
-tags: ["dacon", "ic50", "regression", "custom morgan", "10-fold", "cross validation", "shuffle", "similarities", "mean reduce", "origin data", "XGB", "structure features"]
+notes: "all features"
+tags: ["dacon", "ic50", "regression", "custom morgan", "5-fold", "cross validation", "shuffle", "similarities", "mean reduce", "origin data", "XGB", "structure features"]
 run_name: "dummy" # dummy parameter
 
 model_name: xgb # dnn # resnet

@@ -312,8 +312,8 @@ class SimpleDNNPreprocess(DataPreprocess):
             inertial_moments = np.array([Ixx, Iyy, Izz, Ixy, Iyz, Izx])
             return inertial_moments
         
-        self.train_df['moment'] = self.train_df['mol'].progress_apply(calculate_inertial_moments)
-        self.test_df['moment'] = self.test_df['mol'].progress_apply(calculate_inertial_moments)
+        # self.train_df['moment'] = self.train_df['mol'].progress_apply(calculate_inertial_moments)
+        # self.test_df['moment'] = self.test_df['mol'].progress_apply(calculate_inertial_moments)
 
         logger.info("[SimpleDNNPreprocess] end preprocess datas...")
 
@@ -379,6 +379,8 @@ class XGBoostDataset:
         # logger.info(f"{data['gasteiger'].iloc[0].shape}")
         def concatenate_features(row):
             return np.concatenate([
+                row['morgan_embedding'].flatten(),
+                row['baseline_fingerprint'].flatten(),
                 row['morgan_atom_embedding'].flatten(),
                 row['similarities'],
                 row['num_bonds'],
@@ -388,7 +390,7 @@ class XGBoostDataset:
                 row['kappa_3'],
                 row['maccs'],
                 row['gasteiger'],
-                row['moment'],
+                # row['moment'],
             ]).astype('float32')
 
         data.loc[:, 'X'] = data.apply(concatenate_features, axis=1)
