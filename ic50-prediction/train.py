@@ -5,8 +5,9 @@ from torch.utils.data import DataLoader
 from dataset import (
     DataPreprocess, IC50Dataset,
     SimpleDNNPreprocess, SimpleDNNDataset,
+    XGBoostPreprocess, XGBoostDataset
 )
-from trainers import Trainer
+from trainers import Trainer, XGBTrainer
 from utils import log_wandb, set_seed
 
 from omegaconf import DictConfig
@@ -21,18 +22,30 @@ def run_fold(cfg, fold, fold_dataset, test_df):
         train_data = SimpleDNNDataset(fold_dataset['train_df'], train=True)
         valid_data = SimpleDNNDataset(fold_dataset['valid_df'], train=True)
         test_data = SimpleDNNDataset(test_df, train=False)
+    elif cfg.model_name in ('xgb', ):
+            train_data = XGBoostDataset(fold_dataset['train_df'], train=True)
+            valid_data = XGBoostDataset(fold_dataset['valid_df'], train=True)
+            test_data = XGBoostDataset(test_df, train=False)
     else:
         train_data = IC50Dataset(fold_dataset['train_df'], train=True)
         valid_data = IC50Dataset(fold_dataset['valid_df'], train=True)
         test_data = IC50Dataset(test_df, train=False)
 
     logger.info(f"[Train]_{fold + 1} 3. prepare dataloader...")
-    train_dataloader = DataLoader(train_data, batch_size=cfg.batch_size)
-    valid_dataloader = DataLoader(valid_data, batch_size=cfg.batch_size)
-    test_dataloader = DataLoader(test_data)
+    if cfg.model_name in ('xgb', ):
+        train_dataloader = train_data()
+        valid_dataloader = valid_data()
+        test_dataloader = test_data()
+    else:
+        train_dataloader = DataLoader(train_data, batch_size=cfg.batch_size)
+        valid_dataloader = DataLoader(valid_data, batch_size=cfg.batch_size)
+        test_dataloader = DataLoader(test_data)
 
     logger.info(f"[Train]_{fold + 1} 4. prepare trainer...")
-    trainer = Trainer(cfg, fold=fold)
+    if cfg.model_name in ('xgb', ):
+        trainer = XGBTrainer(cfg, fold=fold)
+    else:
+        trainer = Trainer(cfg, fold=fold)
 
     logger.info(f"[Train]_{fold + 1} 5. run trainer...")
     best_valid_loss, best_valid_score = trainer.run(train_dataloader, valid_dataloader)
@@ -50,6 +63,8 @@ def run(cfg: DictConfig):
     logger.info("[Train] 1. preprocess data...")
     if cfg.model_name in ('dnn', ):
         preprocess = SimpleDNNPreprocess(cfg.data_dir)
+    elif cfg.model_name in ('xgb', ):
+        preprocess = XGBoostPreprocess(cfg.data_dir)
     else:
         preprocess = DataPreprocess(cfg.data_dir)
 
@@ -69,7 +84,10 @@ def run(cfg: DictConfig):
             'k-fold score': np.mean(best_valid_score),
         })
         
-        trainer = Trainer(cfg)
+        if cfg.model_name in ('xgb', ):
+            trainer = XGBTrainer(cfg)
+        else:
+            trainer = Trainer(cfg)
         trainer.inference(np.mean(submissions, axis=0))
 
     else:
@@ -79,18 +97,30 @@ def run(cfg: DictConfig):
             train_data = SimpleDNNDataset(train_df, train=True)
             valid_data = SimpleDNNDataset(valid_df, train=True)
             test_data = SimpleDNNDataset(test_df, train=False)
+        elif cfg.model_name in ('xgb', ):
+            train_data = XGBoostDataset(train_df, train=True)
+            valid_data = XGBoostDataset(valid_df, train=True)
+            test_data = XGBoostDataset(test_df, train=False)
         else:
             train_data = IC50Dataset(train_df, train=True)
             valid_data = IC50Dataset(valid_df, train=True)
             test_data = IC50Dataset(test_df, train=False)
 
         logger.info("[Train] 3. prepare dataloader...")
-        train_dataloader = DataLoader(train_data, batch_size=cfg.batch_size)
-        valid_dataloader = DataLoader(valid_data, batch_size=cfg.batch_size)
-        test_dataloader = DataLoader(test_data)
+        if cfg.model_name in ('xgb', ):
+            train_dataloader = train_data()
+            valid_dataloader = valid_data()
+            test_dataloader = test_data()
+        else:
+            train_dataloader = DataLoader(train_data, batch_size=cfg.batch_size)
+            valid_dataloader = DataLoader(valid_data, batch_size=cfg.batch_size)
+            test_dataloader = DataLoader(test_data)
 
         logger.info("[Train] 4. prepare trainer...")
-        trainer = Trainer(cfg)
+        if cfg.model_name in ('xgb', ):
+            trainer = XGBTrainer(cfg)
+        else:
+            trainer = Trainer(cfg)
 
         logger.info("[Train] 5. run trainer...")
         trainer.run(train_dataloader, valid_dataloader)
@@ -98,6 +128,7 @@ def run(cfg: DictConfig):
         logger.info("[Train] 6. inference trainer...")
         trainer.load_best_model()
         submission = trainer.evaluate(test_dataloader)
+            
         trainer.inference(submission)
     logger.info("[Train] end run...")
 
