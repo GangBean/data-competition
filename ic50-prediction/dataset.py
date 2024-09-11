@@ -143,6 +143,23 @@ class SimpleDNNPreprocess(DataPreprocess):
         # )
         # self.test_df['X'] = self.test_df.apply(lambda row: np.concat([row['X'], row['fingerprint']]), axis=1)
 
+        CFG = {
+            'NBITS':2048,
+            'SEED':42,
+        }
+        
+        logger.info(f"[SimpleDNNPreprocess] baseline fingerprint...")
+        def smiles_to_fingerprint_baseline(smiles):
+            mol = Chem.MolFromSmiles(smiles)
+            if mol is not None:
+                fp = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=CFG['NBITS'])
+                return np.array(fp)
+            else:
+                return np.zeros((CFG['NBITS'],))
+        
+        self.train_df['baseline_fingerprint'] = self.train_df['Smiles'].apply(smiles_to_fingerprint_baseline)
+        self.test_df['baseline_fingerprint'] = self.test_df['Smiles'].apply(smiles_to_fingerprint_baseline)
+        
         logger.info(f"[SimpleDNNPreprocess] Transform to Morgan Embedding...")
         def smiles_to_morgan(smiles):
             mol = Chem.MolFromSmiles(smiles)
@@ -290,15 +307,17 @@ class XGBoostDataset:
     def _transformed(self, data: pd.DataFrame) -> pd.DataFrame:
         data.loc[:, 'X'] = data.apply(lambda row: np.concatenate(
             # [row['morgan_embedding'].flatten(), 
-             [row['morgan_atom_embedding'].flatten(), row['similarities']]
+             [row['baseline_fingerprint'].flatten()] #, row['similarities']]
         ).astype('float32'), axis=1)
         return data
     
     def __call__(self) -> dict:
         return {
-            'X': self.data['X'],
+            # 'X': self.data['X'],
+            'X': self.data['baseline_fingerprint'],
             'pIC50': self.data['pIC50'],
             'IC50': self.data['IC50_nM'],
         } if self.train else {
-            'X': self.data['X'],
+            # 'X': self.data['X'],
+            'X': self.data['baseline_fingerprint'],
         }

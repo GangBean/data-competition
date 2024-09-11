@@ -243,7 +243,6 @@ class XGBTrainer:
         actual_pic50 = valid_data['pIC50']
         actual_ic50 = valid_data['IC50']
 
-        self.model.fit(valid_X, valid_Y)
         pred = self.model.predict(valid_X)
 
         valid_loss = np.sqrt(mean_squared_error(pred, valid_Y))
