@@ -1,7 +1,7 @@
 import os, random
 
 from rdkit import Chem
-from rdkit.Chem import Draw, AllChem, DataStructs
+from rdkit.Chem import Draw, AllChem, DataStructs, Descriptors
 
 import pandas as pd
 import numpy as np
@@ -244,6 +244,25 @@ class SimpleDNNPreprocess(DataPreprocess):
         self.train_df['morgan_atom_embedding'] = self.train_df['morgan_info'].apply(atom_count_array)
         self.test_df['morgan_atom_embedding'] = self.test_df['morgan_info'].apply(atom_count_array)
 
+        logger.info("[SimpleDNNPreprocess] Bonds num...")
+        self.train_df['mol'] = self.train_df['Smiles'].apply(Chem.MolFromSmiles)
+        self.test_df['mol'] = self.test_df['Smiles'].apply(Chem.MolFromSmiles)
+        
+        self.train_df['num_bonds'] = self.train_df['mol'].apply(lambda mol: np.array([mol.GetNumBonds()]))
+        self.test_df['num_bonds'] = self.test_df['mol'].apply(lambda mol: np.array([mol.GetNumBonds()]))
+        
+        logger.info("[SimpleDNNPreprocess] Rings num...")
+        self.train_df['num_rings'] = self.train_df['mol'].apply(lambda mol: np.array([Chem.rdMolDescriptors.CalcNumRings(mol)]))
+        self.test_df['num_rings'] = self.test_df['mol'].apply(lambda mol: np.array([Chem.rdMolDescriptors.CalcNumRings(mol)]))
+        
+        logger.info("[SimpleDNNPreprocess] Kappa1,2,3 ...")
+        self.train_df['kappa_1'] = self.train_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa1(mol)]))
+        self.train_df['kappa_2'] = self.train_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa2(mol)]))
+        self.train_df['kappa_3'] = self.train_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa3(mol)]))
+        self.test_df['kappa_1'] = self.test_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa1(mol)]))
+        self.test_df['kappa_2'] = self.test_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa2(mol)]))
+        self.test_df['kappa_3'] = self.test_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa3(mol)]))
+
         logger.info("[SimpleDNNPreprocess] end preprocess datas...")
 
 
@@ -305,10 +324,18 @@ class XGBoostDataset:
         self.train: bool = train
     
     def _transformed(self, data: pd.DataFrame) -> pd.DataFrame:
-        data.loc[:, 'X'] = data.apply(lambda row: np.concatenate(
+        logger.info(f"data columns: {data.columns}")
+
+        data.loc[:, 'X'] = data.apply(lambda row: np.concatenate([
             # [row['morgan_embedding'].flatten(),
-             [row['morgan_atom_embedding'].flatten(), row['similarities']]
-        ).astype('float32'), axis=1)
+            row['morgan_atom_embedding'].flatten(),
+            row['similarities'],
+            row['num_bonds'],
+            row['num_rings'],
+            row['kappa_1'],
+            row['kappa_2'],
+            row['kappa_3'],
+        ]).astype('float32'), axis=1)
         return data
     
     def __call__(self) -> dict:
