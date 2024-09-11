@@ -1,7 +1,9 @@
 import os, random
 
 from rdkit import Chem
-from rdkit.Chem import Draw, AllChem, DataStructs, Descriptors
+from rdkit.Chem import (
+    Draw, AllChem, DataStructs, Descriptors, MACCSkeys
+)
 
 import pandas as pd
 import numpy as np
@@ -263,6 +265,10 @@ class SimpleDNNPreprocess(DataPreprocess):
         self.test_df['kappa_2'] = self.test_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa2(mol)]))
         self.test_df['kappa_3'] = self.test_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa3(mol)]))
 
+        logger.info("[SimpleDNNPreprocess] MACCS ...")
+        self.train_df['maccs'] = self.train_df['mol'].apply(lambda mol: np.array(MACCSkeys.GenMACCSKeys(mol)))
+        self.test_df['maccs'] = self.test_df['mol'].apply(lambda mol: np.array(MACCSkeys.GenMACCSKeys(mol)))
+
         logger.info("[SimpleDNNPreprocess] end preprocess datas...")
 
 
@@ -324,7 +330,7 @@ class XGBoostDataset:
         self.train: bool = train
     
     def _transformed(self, data: pd.DataFrame) -> pd.DataFrame:
-        # logger.info(f"data columns: {data.columns}")
+        logger.info(f"{data.head(2)}")
 
         data.loc[:, 'X'] = data.apply(lambda row: np.concatenate([
             # [row['morgan_embedding'].flatten(),
@@ -335,6 +341,7 @@ class XGBoostDataset:
             row['kappa_1'],
             row['kappa_2'],
             row['kappa_3'],
+            row['maccs'],
         ]).astype('float32'), axis=1)
         return data
     
