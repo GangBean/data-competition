@@ -269,6 +269,52 @@ class SimpleDNNPreprocess(DataPreprocess):
         self.train_df['maccs'] = self.train_df['mol'].apply(lambda mol: np.array(MACCSkeys.GenMACCSKeys(mol)))
         self.test_df['maccs'] = self.test_df['mol'].apply(lambda mol: np.array(MACCSkeys.GenMACCSKeys(mol)))
 
+        logger.info("[SimpleDNNPreprocess] Gasteiger charges...")
+        def gasteiger_charge(mol, fixed_size=100):
+            AllChem.ComputeGasteigerCharges(mol)
+            charges = [float(atom.GetProp('_GasteigerCharge')) for atom in mol.GetAtoms()]
+            
+            if len(charges) < fixed_size:
+                charges.extend([0.0] * (fixed_size - len(charges)))
+            else:
+                charges = charges[:fixed_size]
+            
+            return np.array(charges)
+        
+        self.train_df['gasteiger'] = self.train_df['mol'].apply(gasteiger_charge)
+        self.test_df['gasteiger'] = self.test_df['mol'].apply(gasteiger_charge)
+
+        logger.info("[SimpleDNNPreprocess] moments...")
+        def calculate_inertial_moments(mol):
+            mol = Chem.AddHs(mol)  # 수소 추가
+
+            # 3D 구조 생성 및 최적화
+            AllChem.EmbedMolecule(mol)
+            AllChem.UFFOptimizeMolecule(mol)  # UFF 최적화
+
+            # Conformer를 얻고 각 원자의 위치를 가져오기
+            conf = mol.GetConformer()
+            coords = [conf.GetAtomPosition(i) for i in range(mol.GetNumAtoms())]
+            coords = np.array(coords)
+            
+            # 분자의 무게 중심을 계산
+            center_of_mass = np.mean(coords, axis=0)
+            coords_centered = coords - center_of_mass
+
+            # 관성 모멘트 계산
+            Ixx = np.sum((coords_centered[:, 1]**2 + coords_centered[:, 2]**2))
+            Iyy = np.sum((coords_centered[:, 0]**2 + coords_centered[:, 2]**2))
+            Izz = np.sum((coords_centered[:, 0]**2 + coords_centered[:, 1]**2))
+            Ixy = -np.sum(coords_centered[:, 0] * coords_centered[:, 1])
+            Iyz = -np.sum(coords_centered[:, 1] * coords_centered[:, 2])
+            Izx = -np.sum(coords_centered[:, 2] * coords_centered[:, 0])
+            
+            inertial_moments = np.array([Ixx, Iyy, Izz, Ixy, Iyz, Izx])
+            return inertial_moments
+        
+        self.train_df['moment'] = self.train_df['mol'].progress_apply(calculate_inertial_moments)
+        self.test_df['moment'] = self.test_df['mol'].progress_apply(calculate_inertial_moments)
+
         logger.info("[SimpleDNNPreprocess] end preprocess datas...")
 
 
@@ -330,19 +376,22 @@ class XGBoostDataset:
         self.train: bool = train
     
     def _transformed(self, data: pd.DataFrame) -> pd.DataFrame:
-        # logger.info(f"{data.head(2)}")
+        # logger.info(f"{data['gasteiger'].iloc[0].shape}")
+        def concatenate_features(row):
+            return np.concatenate([
+                row['morgan_atom_embedding'].flatten(),
+                row['similarities'],
+                row['num_bonds'],
+                row['num_rings'], 
+                row['kappa_1'],
+                row['kappa_2'],
+                row['kappa_3'],
+                row['maccs'],
+                row['gasteiger'],
+                row['moment'],
+            ]).astype('float32')
 
-        data.loc[:, 'X'] = data.apply(lambda row: np.concatenate([
-            # [row['morgan_embedding'].flatten(),
-            row['morgan_atom_embedding'].flatten(),
-            row['similarities'],
-            row['num_bonds'],
-            row['num_rings'],
-            row['kappa_1'],
-            row['kappa_2'],
-            row['kappa_3'],
-            row['maccs'],
-        ]).astype('float32'), axis=1)
+        data.loc[:, 'X'] = data.apply(concatenate_features, axis=1)
         return data
     
     def __call__(self) -> dict:
