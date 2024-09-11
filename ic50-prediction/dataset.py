@@ -306,18 +306,16 @@ class XGBoostDataset:
     
     def _transformed(self, data: pd.DataFrame) -> pd.DataFrame:
         data.loc[:, 'X'] = data.apply(lambda row: np.concatenate(
-            # [row['morgan_embedding'].flatten(), 
-             [row['baseline_fingerprint'].flatten()] #, row['similarities']]
+            # [row['morgan_embedding'].flatten(),
+             [row['morgan_atom_embedding'].flatten(), row['similarities']]
         ).astype('float32'), axis=1)
         return data
     
     def __call__(self) -> dict:
         return {
-            # 'X': self.data['X'],
-            'X': self.data['baseline_fingerprint'],
+            'X': self.data['X'],
             'pIC50': self.data['pIC50'],
             'IC50': self.data['IC50_nM'],
         } if self.train else {
-            # 'X': self.data['X'],
-            'X': self.data['baseline_fingerprint'],
+            'X': self.data['X'],
         }

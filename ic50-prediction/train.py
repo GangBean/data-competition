@@ -22,18 +22,30 @@ def run_fold(cfg, fold, fold_dataset, test_df):
         train_data = SimpleDNNDataset(fold_dataset['train_df'], train=True)
         valid_data = SimpleDNNDataset(fold_dataset['valid_df'], train=True)
         test_data = SimpleDNNDataset(test_df, train=False)
+    elif cfg.model_name in ('xgb', ):
+            train_data = XGBoostDataset(fold_dataset['train_df'], train=True)
+            valid_data = XGBoostDataset(fold_dataset['valid_df'], train=True)
+            test_data = XGBoostDataset(test_df, train=False)
     else:
         train_data = IC50Dataset(fold_dataset['train_df'], train=True)
         valid_data = IC50Dataset(fold_dataset['valid_df'], train=True)
         test_data = IC50Dataset(test_df, train=False)
 
     logger.info(f"[Train]_{fold + 1} 3. prepare dataloader...")
-    train_dataloader = DataLoader(train_data, batch_size=cfg.batch_size)
-    valid_dataloader = DataLoader(valid_data, batch_size=cfg.batch_size)
-    test_dataloader = DataLoader(test_data)
+    if cfg.model_name in ('xgb', ):
+        train_dataloader = train_data()
+        valid_dataloader = valid_data()
+        test_dataloader = test_data()
+    else:
+        train_dataloader = DataLoader(train_data, batch_size=cfg.batch_size)
+        valid_dataloader = DataLoader(valid_data, batch_size=cfg.batch_size)
+        test_dataloader = DataLoader(test_data)
 
     logger.info(f"[Train]_{fold + 1} 4. prepare trainer...")
-    trainer = Trainer(cfg, fold=fold)
+    if cfg.model_name in ('xgb', ):
+        trainer = XGBTrainer(cfg, fold=fold)
+    else:
+        trainer = Trainer(cfg, fold=fold)
 
     logger.info(f"[Train]_{fold + 1} 5. run trainer...")
     best_valid_loss, best_valid_score = trainer.run(train_dataloader, valid_dataloader)
@@ -72,7 +84,10 @@ def run(cfg: DictConfig):
             'k-fold score': np.mean(best_valid_score),
         })
         
-        trainer = Trainer(cfg)
+        if cfg.model_name in ('xgb', ):
+            trainer = XGBTrainer(cfg)
+        else:
+            trainer = Trainer(cfg)
         trainer.inference(np.mean(submissions, axis=0))
 
     else:
