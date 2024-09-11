@@ -330,7 +330,7 @@ class XGBoostDataset:
         self.train: bool = train
     
     def _transformed(self, data: pd.DataFrame) -> pd.DataFrame:
-        logger.info(f"{data.head(2)}")
+        # logger.info(f"{data.head(2)}")
 
         data.loc[:, 'X'] = data.apply(lambda row: np.concatenate([
             # [row['morgan_embedding'].flatten(),
