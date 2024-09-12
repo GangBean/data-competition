@@ -79,10 +79,11 @@ def run(cfg: DictConfig):
             valid_scores.append(best_valid_score)
 
         logger.info(f"[Output] K-fold loss: {np.mean(best_valid_loss):.4f} / score: {np.mean(best_valid_score):.4f}")
-        wandb.log({
-            'k-fold loss': np.mean(best_valid_loss),
-            'k-fold score': np.mean(best_valid_score),
-        })
+        if cfg.wandb:
+            wandb.log({
+                'k-fold loss': np.mean(best_valid_loss),
+                'k-fold score': np.mean(best_valid_score),
+            })
         
         if cfg.model_name in ('xgb', ):
             trainer = XGBTrainer(cfg)

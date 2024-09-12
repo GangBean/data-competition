@@ -2,7 +2,7 @@ import os, random
 
 from rdkit import Chem
 from rdkit.Chem import (
-    Draw, AllChem, DataStructs, Descriptors, MACCSkeys
+    Draw, AllChem, DataStructs, Descriptors, MACCSkeys, Descriptors3D
 )
 
 import pandas as pd
@@ -185,7 +185,7 @@ class SimpleDNNPreprocess(DataPreprocess):
         morgan_key = sorted(list(morgan_key_set))
         total_morgan_key2idx = {k:i for i, k in enumerate(morgan_key)} # morgan key to idx
 
-        def morgan_info_to_embedding(info, key_count=13_279, radius_count=4):
+        def morgan_info_to_embedding(info, key_count=13_279, radius_count=4, max_len: int=1_000):
             embedding = np.zeros((key_count, radius_count, )) # init embedding
 
             for key, radius_list in info.items(): # iterate over morgan_infos
@@ -193,7 +193,7 @@ class SimpleDNNPreprocess(DataPreprocess):
                 for radius, count in radius_count.items():
                     embedding[total_morgan_key2idx[key], radius] = count
 
-            return embedding
+            return embedding[:max_len, :]
         
         self.train_df['morgan_embedding'] = self.train_df['morgan_info'].apply(morgan_info_to_embedding)
         self.test_df['morgan_embedding'] = self.test_df['morgan_info'].apply(morgan_info_to_embedding)
@@ -246,74 +246,99 @@ class SimpleDNNPreprocess(DataPreprocess):
         self.train_df['morgan_atom_embedding'] = self.train_df['morgan_info'].apply(atom_count_array)
         self.test_df['morgan_atom_embedding'] = self.test_df['morgan_info'].apply(atom_count_array)
 
-        logger.info("[SimpleDNNPreprocess] Bonds num...")
         self.train_df['mol'] = self.train_df['Smiles'].apply(Chem.MolFromSmiles)
         self.test_df['mol'] = self.test_df['Smiles'].apply(Chem.MolFromSmiles)
         
-        self.train_df['num_bonds'] = self.train_df['mol'].apply(lambda mol: np.array([mol.GetNumBonds()]))
-        self.test_df['num_bonds'] = self.test_df['mol'].apply(lambda mol: np.array([mol.GetNumBonds()]))
+        # logger.info("[SimpleDNNPreprocess] Bonds num...")
+        # self.train_df['num_bonds'] = self.train_df['mol'].apply(lambda mol: np.array([mol.GetNumBonds()]))
+        # self.test_df['num_bonds'] = self.test_df['mol'].apply(lambda mol: np.array([mol.GetNumBonds()]))
         
-        logger.info("[SimpleDNNPreprocess] Rings num...")
-        self.train_df['num_rings'] = self.train_df['mol'].apply(lambda mol: np.array([Chem.rdMolDescriptors.CalcNumRings(mol)]))
-        self.test_df['num_rings'] = self.test_df['mol'].apply(lambda mol: np.array([Chem.rdMolDescriptors.CalcNumRings(mol)]))
+        # logger.info("[SimpleDNNPreprocess] Rings num...")
+        # self.train_df['num_rings'] = self.train_df['mol'].apply(lambda mol: np.array([Chem.rdMolDescriptors.CalcNumRings(mol)]))
+        # self.test_df['num_rings'] = self.test_df['mol'].apply(lambda mol: np.array([Chem.rdMolDescriptors.CalcNumRings(mol)]))
         
-        logger.info("[SimpleDNNPreprocess] Kappa1,2,3 ...")
-        self.train_df['kappa_1'] = self.train_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa1(mol)]))
-        self.train_df['kappa_2'] = self.train_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa2(mol)]))
-        self.train_df['kappa_3'] = self.train_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa3(mol)]))
-        self.test_df['kappa_1'] = self.test_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa1(mol)]))
-        self.test_df['kappa_2'] = self.test_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa2(mol)]))
-        self.test_df['kappa_3'] = self.test_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa3(mol)]))
+        # logger.info("[SimpleDNNPreprocess] Kappa1,2,3 ...")
+        # self.train_df['kappa_1'] = self.train_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa1(mol)]))
+        # self.train_df['kappa_2'] = self.train_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa2(mol)]))
+        # self.train_df['kappa_3'] = self.train_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa3(mol)]))
+        # self.test_df['kappa_1'] = self.test_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa1(mol)]))
+        # self.test_df['kappa_2'] = self.test_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa2(mol)]))
+        # self.test_df['kappa_3'] = self.test_df['mol'].apply(lambda mol: np.array([Descriptors.Kappa3(mol)]))
 
-        logger.info("[SimpleDNNPreprocess] MACCS ...")
-        self.train_df['maccs'] = self.train_df['mol'].apply(lambda mol: np.array(MACCSkeys.GenMACCSKeys(mol)))
-        self.test_df['maccs'] = self.test_df['mol'].apply(lambda mol: np.array(MACCSkeys.GenMACCSKeys(mol)))
+        # logger.info("[SimpleDNNPreprocess] MACCS ...")
+        # self.train_df['maccs'] = self.train_df['mol'].apply(lambda mol: np.array(MACCSkeys.GenMACCSKeys(mol)))
+        # self.test_df['maccs'] = self.test_df['mol'].apply(lambda mol: np.array(MACCSkeys.GenMACCSKeys(mol)))
 
-        logger.info("[SimpleDNNPreprocess] Gasteiger charges...")
-        def gasteiger_charge(mol, fixed_size=100):
-            AllChem.ComputeGasteigerCharges(mol)
-            charges = [float(atom.GetProp('_GasteigerCharge')) for atom in mol.GetAtoms()]
+        # logger.info("[SimpleDNNPreprocess] Gasteiger charges...")
+        # def gasteiger_charge(mol, fixed_size=100):
+        #     AllChem.ComputeGasteigerCharges(mol)
+        #     charges = [float(atom.GetProp('_GasteigerCharge')) for atom in mol.GetAtoms()]
             
-            if len(charges) < fixed_size:
-                charges.extend([0.0] * (fixed_size - len(charges)))
-            else:
-                charges = charges[:fixed_size]
+        #     if len(charges) < fixed_size:
+        #         charges.extend([0.0] * (fixed_size - len(charges)))
+        #     else:
+        #         charges = charges[:fixed_size]
             
-            return np.array(charges)
+        #     return np.array(charges)
         
-        self.train_df['gasteiger'] = self.train_df['mol'].apply(gasteiger_charge)
-        self.test_df['gasteiger'] = self.test_df['mol'].apply(gasteiger_charge)
+        # self.train_df['gasteiger'] = self.train_df['mol'].apply(gasteiger_charge)
+        # self.test_df['gasteiger'] = self.test_df['mol'].apply(gasteiger_charge)
 
-        logger.info("[SimpleDNNPreprocess] moments...")
-        def calculate_inertial_moments(mol):
-            mol = Chem.AddHs(mol)  # 수소 추가
+        # logger.info("[SimpleDNNPreprocess] moments...")
+        # def calculate_inertial_moments(mol):
+        #     mol = Chem.AddHs(mol)  # 수소 추가
 
-            # 3D 구조 생성 및 최적화
-            AllChem.EmbedMolecule(mol)
-            AllChem.UFFOptimizeMolecule(mol)  # UFF 최적화
+        #     # 3D 구조 생성 및 최적화
+        #     AllChem.EmbedMolecule(mol)
+        #     AllChem.UFFOptimizeMolecule(mol)  # UFF 최적화
 
-            # Conformer를 얻고 각 원자의 위치를 가져오기
-            conf = mol.GetConformer()
-            coords = [conf.GetAtomPosition(i) for i in range(mol.GetNumAtoms())]
-            coords = np.array(coords)
+        #     # Conformer를 얻고 각 원자의 위치를 가져오기
+        #     conf = mol.GetConformer()
+        #     coords = [conf.GetAtomPosition(i) for i in range(mol.GetNumAtoms())]
+        #     coords = np.array(coords)
             
-            # 분자의 무게 중심을 계산
-            center_of_mass = np.mean(coords, axis=0)
-            coords_centered = coords - center_of_mass
+        #     # 분자의 무게 중심을 계산
+        #     center_of_mass = np.mean(coords, axis=0)
+        #     coords_centered = coords - center_of_mass
 
-            # 관성 모멘트 계산
-            Ixx = np.sum((coords_centered[:, 1]**2 + coords_centered[:, 2]**2))
-            Iyy = np.sum((coords_centered[:, 0]**2 + coords_centered[:, 2]**2))
-            Izz = np.sum((coords_centered[:, 0]**2 + coords_centered[:, 1]**2))
-            Ixy = -np.sum(coords_centered[:, 0] * coords_centered[:, 1])
-            Iyz = -np.sum(coords_centered[:, 1] * coords_centered[:, 2])
-            Izx = -np.sum(coords_centered[:, 2] * coords_centered[:, 0])
+        #     # 관성 모멘트 계산
+        #     Ixx = np.sum((coords_centered[:, 1]**2 + coords_centered[:, 2]**2))
+        #     Iyy = np.sum((coords_centered[:, 0]**2 + coords_centered[:, 2]**2))
+        #     Izz = np.sum((coords_centered[:, 0]**2 + coords_centered[:, 1]**2))
+        #     Ixy = -np.sum(coords_centered[:, 0] * coords_centered[:, 1])
+        #     Iyz = -np.sum(coords_centered[:, 1] * coords_centered[:, 2])
+        #     Izx = -np.sum(coords_centered[:, 2] * coords_centered[:, 0])
             
-            inertial_moments = np.array([Ixx, Iyy, Izz, Ixy, Iyz, Izx])
-            return inertial_moments
+        #     inertial_moments = np.array([Ixx, Iyy, Izz, Ixy, Iyz, Izx])
+        #     return inertial_moments
         
         # self.train_df['moment'] = self.train_df['mol'].progress_apply(calculate_inertial_moments)
         # self.test_df['moment'] = self.test_df['mol'].progress_apply(calculate_inertial_moments)
+
+        logger.info("[SimpleDNNPreprocess] all descriptors...")
+        def calc_mol_descriptors(mol):
+            desc = Descriptors.CalcMolDescriptors(mol)
+            output = []
+            for _, value in desc.items():
+                output.append(np.array(value, dtype='float32').flatten())
+            return np.concat(output)
+        
+        self.train_df['all_desc'] = self.train_df['mol'].apply(calc_mol_descriptors)
+        self.test_df['all_desc'] = self.test_df['mol'].apply(calc_mol_descriptors)
+
+        logger.info("[SimpleDNNPreprocess] calulate 3d descriptors...")
+        def calc_all_3d_descriptors(mol):
+            mol = Chem.AddHs(mol)
+            AllChem.EmbedMolecule(mol, AllChem.ETKDG())  # 3D 좌표 생성
+            AllChem.UFFOptimizeMolecule(mol)  # 에너지 최소화
+            desc_3d = Descriptors3D.CalcMolDescriptors3D(mol)
+            output = []
+            for _, value in desc_3d.items():
+                output.append(np.array(value, dtype='float32').flatten())
+            return np.concat(output)
+        
+        self.train_df['all_3d_desc'] = self.train_df['mol'].progress_apply(calc_all_3d_descriptors)
+        self.test_df['all_3d_desc'] = self.test_df['mol'].progress_apply(calc_all_3d_descriptors)
 
         logger.info("[SimpleDNNPreprocess] end preprocess datas...")
 
@@ -379,18 +404,20 @@ class XGBoostDataset:
         # logger.info(f"{data['gasteiger'].iloc[0].shape}")
         def concatenate_features(row):
             return np.concatenate([
-                row['morgan_embedding'].flatten(),
+                # row['morgan_embedding'].flatten(),
                 row['baseline_fingerprint'].flatten(),
-                row['morgan_atom_embedding'].flatten(),
+                # row['morgan_atom_embedding'].flatten(),
                 row['similarities'],
-                row['num_bonds'],
-                row['num_rings'], 
-                row['kappa_1'],
-                row['kappa_2'],
-                row['kappa_3'],
-                row['maccs'],
-                row['gasteiger'],
+                # row['num_bonds'],
+                # row['num_rings'], 
+                # row['kappa_1'],
+                # row['kappa_2'],
+                # row['kappa_3'],
+                # row['maccs'],
+                # row['gasteiger'],
                 # row['moment'],
+                row['all_desc'],
+                row['all_3d_desc'],
             ]).astype('float32')
 
         data.loc[:, 'X'] = data.apply(concatenate_features, axis=1)
