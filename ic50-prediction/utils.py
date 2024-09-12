@@ -10,6 +10,12 @@ import pytz
 import numpy as np
 import torch
 
+def selected_features(cfg) -> list[str]:
+    features = [feature for feature, flag in cfg.features.items() if flag == 1]
+    if len(features) == 0:
+        raise ValueError(f"[Utils] feature는 1개 이상 선택해야 합니다: {len(features)} 개")
+    return features
+
 def set_seed(seed: int):
     logger.info(f"[utils] set seed as {seed}...")
     random.seed(seed)

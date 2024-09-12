@@ -8,7 +8,9 @@ from dataset import (
     XGBoostPreprocess, XGBoostDataset
 )
 from trainers import Trainer, XGBTrainer
-from utils import log_wandb, set_seed
+from utils import (
+    log_wandb, set_seed, selected_features
+)
 
 from omegaconf import DictConfig
 from loguru import logger
@@ -16,16 +18,16 @@ from loguru import logger
 import numpy as np
 import wandb
 
-def run_fold(cfg, fold, fold_dataset, test_df):
+def run_fold(cfg, fold, fold_dataset, test_df, features):
     logger.info(f"[Train]_{fold + 1} 2. split data...")
     if cfg.model_name in ('dnn', ):
         train_data = SimpleDNNDataset(fold_dataset['train_df'], train=True)
         valid_data = SimpleDNNDataset(fold_dataset['valid_df'], train=True)
         test_data = SimpleDNNDataset(test_df, train=False)
     elif cfg.model_name in ('xgb', ):
-            train_data = XGBoostDataset(fold_dataset['train_df'], train=True)
-            valid_data = XGBoostDataset(fold_dataset['valid_df'], train=True)
-            test_data = XGBoostDataset(test_df, train=False)
+            train_data = XGBoostDataset(fold_dataset['train_df'], features, train=True)
+            valid_data = XGBoostDataset(fold_dataset['valid_df'], features, train=True)
+            test_data = XGBoostDataset(test_df, features, train=False)
     else:
         train_data = IC50Dataset(fold_dataset['train_df'], train=True)
         valid_data = IC50Dataset(fold_dataset['valid_df'], train=True)
@@ -61,19 +63,21 @@ def run(cfg: DictConfig):
 
     logger.info("[Train] start train...")
     logger.info("[Train] 1. preprocess data...")
+    features: list[str] = selected_features(cfg)
+    
     if cfg.model_name in ('dnn', ):
-        preprocess = SimpleDNNPreprocess(cfg.data_dir)
+        preprocess = SimpleDNNPreprocess(cfg.data_dir, features)
     elif cfg.model_name in ('xgb', ):
-        preprocess = XGBoostPreprocess(cfg.data_dir)
+        preprocess = XGBoostPreprocess(cfg.data_dir, features)
     else:
-        preprocess = DataPreprocess(cfg.data_dir)
+        preprocess = DataPreprocess(cfg.data_dir, features)
 
     if cfg.k_fold >= 2:
         k_folded_datasets, test_df = preprocess.k_fold_split(k_fold=cfg.k_fold, seed=cfg.seed)
 
         submissions, valid_losses, valid_scores = [], [], []
         for fold in range(cfg.k_fold):
-            submission, best_valid_loss, best_valid_score = run_fold(cfg, fold, k_folded_datasets[fold], test_df)
+            submission, best_valid_loss, best_valid_score = run_fold(cfg, fold, k_folded_datasets[fold], test_df, features)
             submissions.append(submission)
             valid_losses.append(best_valid_loss)
             valid_scores.append(best_valid_score)
@@ -99,9 +103,9 @@ def run(cfg: DictConfig):
             valid_data = SimpleDNNDataset(valid_df, train=True)
             test_data = SimpleDNNDataset(test_df, train=False)
         elif cfg.model_name in ('xgb', ):
-            train_data = XGBoostDataset(train_df, train=True)
-            valid_data = XGBoostDataset(valid_df, train=True)
-            test_data = XGBoostDataset(test_df, train=False)
+            train_data = XGBoostDataset(train_df, features, train=True)
+            valid_data = XGBoostDataset(valid_df, features, train=True)
+            test_data = XGBoostDataset(test_df, features, train=False)
         else:
             train_data = IC50Dataset(train_df, train=True)
             valid_data = IC50Dataset(valid_df, train=True)
