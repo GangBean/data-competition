@@ -1,8 +1,10 @@
+# Data options
 data_dir: ./data
 model_dir: ./data/models
 valid_ratio: .3
-k_fold: 10
+k_fold: 3
 
+# General hyper-params
 lr: 1e-4
 loss: mse
 device: cuda # cpu
@@ -11,16 +13,33 @@ batch_size: 32
 seed: 42
 patience: 10
 
-wandb: True # False
+# Weight & Biases
+wandb: False # False
 project: ic50-prediction
-notes: "XGBoost morgan_atom_embedding + similarities"
-tags: ["dacon", "ic50", "regression", "custom morgan", "10-fold", "cross validation", "shuffle", "similarities", "mean reduce", "origin data", "XGB"]
+notes: "Add all descriptors to atom count"
+tags: ["dacon", "ic50", "regression", "custom morgan", "5-fold", "cross validation", "shuffle", "similarities", "mean reduce", "origin data", "XGB", "structure features"]
 run_name: "dummy" # dummy parameter
 
+# Model hyper-params
 model_name: xgb # dnn # resnet
 layer_dims: [1024, 1024, 512, 512, 256, 256, 128, 128, 64, 64, 32, 32] #, 64, 64, 128, 128, 256, 256, 512, 512, 1024, 1024]
 embed_dim: 64
 type: atom # atom
-n_estimators: 500
+n_estimators: 100
 learning_rate: 1e-1
 max_depth: 5
+
+# Features: turn on/off by 1/0
+features:
+  morgan_embedding: 1
+  baseline_fingerprint: 1
+  morgan_atom_embedding: 1
+  similarities: 1
+  num_bonds: 1
+  num_rings: 1
+  kappa_1: 1
+  kappa_2: 1
+  kappa_3: 1
+  maccs: 1
+  all_desc: 1
+  all_3d_desc: 0
