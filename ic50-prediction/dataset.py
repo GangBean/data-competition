@@ -1,4 +1,4 @@
-import os, random
+import os, random, inspect
 
 import pandas as pd
 import numpy as np
@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 
 from loguru import logger
 
-from features import FEATURES
+import features
 
 
 class DataPreprocess:
@@ -36,7 +36,19 @@ class DataPreprocess:
         if feature in df.columns:
             logger.warning(f"[Preprocess] 이미 존재하여 skip 합니다: {feature}")
             return
-        df[feature] = FEATURES[feature](df)
+        
+        # func = FEATURES[feature]
+        funcs = {name: obj for name, obj in inspect.getmembers(features) if inspect.isfunction(obj)}
+        if feature not in funcs:
+            raise NotImplementedError(f"Feature 함수가 구현되어있지 않습니다: {feature}")
+        func = funcs[feature]
+        params = inspect.signature(func).parameters.keys()
+        ADDITIONAL_PARAMS = {
+            'train_df': self.train_df,
+            'test_df': self.test_df,
+        }
+        input_params = [df] + [param for name, param in ADDITIONAL_PARAMS.items() if name in params]
+        df[feature] = func(*input_params)
     
     def _load_datas(self):
         logger.info("[Preprocess] start loading datas...")

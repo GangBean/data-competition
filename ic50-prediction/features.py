@@ -56,91 +56,92 @@ def baseline_fingerprint(df):
     
     return df['Smiles'].apply(smiles_to_fingerprint_baseline)
 
-def morgan_embedding(df):
-    raise NotImplementedError("수정이 필요합니다.")
-    # logger.info(f"[SimpleDNNPreprocess] Transform to Morgan Embedding...")
-    # def smiles_to_morgan(smiles):
-    #     mol = Chem.MolFromSmiles(smiles)
-    #     if mol is not None:
-    #         additional_output = AllChem.AdditionalOutput()
-    #         additional_output.CollectBitInfoMap()
-    #         morgan_gen = AllChem.GetMorganGenerator()
-    #         morgan_gen.GetSparseCountFingerprint(mol, additionalOutput=additional_output)
-    #         info = additional_output.GetBitInfoMap()
-    #         return info
-    #     else:
-    #         return np.zeros((13_279,))
+def morgan_embedding(df, train_df, test_df):
+    # raise NotImplementedError("수정이 필요합니다.")
+    logger.info(f"[SimpleDNNPreprocess] Transform to Morgan Embedding...")
+    def smiles_to_morgan(smiles):
+        mol = Chem.MolFromSmiles(smiles)
+        if mol is not None:
+            additional_output = AllChem.AdditionalOutput()
+            additional_output.CollectBitInfoMap()
+            morgan_gen = AllChem.GetMorganGenerator()
+            morgan_gen.GetSparseCountFingerprint(mol, additionalOutput=additional_output)
+            info = additional_output.GetBitInfoMap()
+            return info
+        else:
+            return np.zeros((13_279,))
     
-    # train_df['morgan_info'] = train_df['Smiles'].apply(smiles_to_morgan)
-    # test_df['morgan_info'] = test_df['Smiles'].apply(smiles_to_morgan)
+    train_df['morgan_info'] = train_df['Smiles'].apply(smiles_to_morgan)
+    test_df['morgan_info'] = test_df['Smiles'].apply(smiles_to_morgan)
 
-    # morgan_key_set = set() # aggregate total morgan key set from train and test data
-    # train_df['morgan_info'].apply(lambda info: morgan_key_set.update(info.keys()))
-    # test_df['morgan_info'].apply(lambda info: morgan_key_set.update(info.keys()))
+    morgan_key_set = set() # aggregate total morgan key set from train and test data
+    train_df['morgan_info'].apply(lambda info: morgan_key_set.update(info.keys()))
+    test_df['morgan_info'].apply(lambda info: morgan_key_set.update(info.keys()))
 
-    # morgan_key = sorted(list(morgan_key_set))
-    # total_morgan_key2idx = {k:i for i, k in enumerate(morgan_key)} # morgan key to idx
+    morgan_key = sorted(list(morgan_key_set))
+    total_morgan_key2idx = {k:i for i, k in enumerate(morgan_key)} # morgan key to idx
 
-    # def morgan_info_to_embedding(info, key_count=13_279, radius_count=4, max_len: int=1_000):
-    #     embedding = np.zeros((key_count, radius_count, )) # init embedding
+    def morgan_info_to_embedding(info, key_count=13_279, radius_count=4, max_len: int=1_000):
+        embedding = np.zeros((key_count, radius_count, )) # init embedding
 
-    #     for key, radius_list in info.items(): # iterate over morgan_infos
-    #         radius_count = dict(Counter([radius[-1] for radius in radius_list])) # count radius's emerge count
-    #         for radius, count in radius_count.items():
-    #             embedding[total_morgan_key2idx[key], radius] = count
+        for key, radius_list in info.items(): # iterate over morgan_infos
+            radius_count = dict(Counter([radius[-1] for radius in radius_list])) # count radius's emerge count
+            for radius, count in radius_count.items():
+                embedding[total_morgan_key2idx[key], radius] = count
 
-    #     return embedding[:max_len, :]
+        return embedding[:max_len, :]
     
-    # df['morgan_embedding'] = df['morgan_info'].apply(morgan_info_to_embedding)
+    df['morgan_embedding'] = df['morgan_info'].apply(morgan_info_to_embedding)
 
-    # logger.info("[SimpleDNNPreprocess] standardization...")
-    # def standardization(embedding):
-    #     mean = np.mean(embedding.flatten())
-    #     std = np.std(embedding.flatten())
+    logger.info("[SimpleDNNPreprocess] standardization...")
+    def standardization(embedding):
+        mean = np.mean(embedding.flatten())
+        std = np.std(embedding.flatten())
 
-    #     return (embedding - mean) / std
+        return (embedding - mean) / std
     
-    # df['morgan_embedding'] = df['morgan_embedding'].apply(standardization)
-    # return df['morgan_embedding'].apply(standardization)
+    df['morgan_embedding'] = df['morgan_embedding'].apply(standardization)
+    return df['morgan_embedding'].apply(standardization)
 
-def similarities(df):
-    raise NotImplementedError("수정이 필요합니다.")
-    # logger.info("[SimpleDNNPreprocess] Similarities...")
-    # def smiles_to_fingerprint(smiles):
-    #     mol = Chem.MolFromSmiles(smiles)
-    #     morgan_gen = AllChem.GetMorganGenerator()
-    #     return morgan_gen.GetSparseCountFingerprint(mol)
+def similarities(df, train_df):
+    # raise NotImplementedError("수정이 필요합니다.")
+    logger.info("[SimpleDNNPreprocess] Similarities...")
+    def smiles_to_fingerprint(smiles):
+        mol = Chem.MolFromSmiles(smiles)
+        morgan_gen = AllChem.GetMorganGenerator()
+        return morgan_gen.GetSparseCountFingerprint(mol)
     
-    # df['fingerprint'] = df['Smiles'].apply(smiles_to_fingerprint)
+    train_df['fingerprint'] = train_df['Smiles'].apply(smiles_to_fingerprint)
+    train_fps = train_df['fingerprint'].tolist()
 
-    # train_fps = df['fingerprint'].tolist()
+    def similarities(fp, train_fp=train_fps):
+        output = []
+        for train_fp in train_fps:
+            output.append(DataStructs.TanimotoSimilarity(fp,train_fp))
+        return np.array(output, dtype='float32')
+    
+    df['fingerprint'] = df['Smiles'].apply(smiles_to_fingerprint)
 
-    # def similarities(fp, train_fp=train_fps):
-    #     output = []
-    #     for train_fp in train_fps:
-    #         output.append(DataStructs.TanimotoSimilarity(fp,train_fp))
-    #     return output
+    tqdm.pandas()
+    return df['fingerprint'].progress_apply(similarities)
 
-    # tqdm.pandas()
-    # return df['fingerprint'].progress_apply(similarities)
+def num_bonds(df):
+    return df['Smiles'].apply(lambda s: np.array([0]))
 
-def num_bonds():
-    pass
+def num_rings(df):
+    return df['Smiles'].apply(lambda s: np.array([0]))
 
-def num_rings():
-    pass
+def kappa_1(df):
+    return df['Smiles'].apply(lambda s: np.array([0]))
 
-def kappa_1():
-    pass
+def kappa_2(df):
+    return df['Smiles'].apply(lambda s: np.array([0]))
 
-def kappa_2():
-    pass
+def kappa_3(df):
+    return df['Smiles'].apply(lambda s: np.array([0]))
 
-def kappa_3():
-    pass
-
-def maccs():
-    pass
+def maccs(df):
+    return df['Smiles'].apply(lambda s: np.array([0]))
 
 def all_desc(df):
     df['mol'] = df['Smiles'].apply(Chem.MolFromSmiles)
@@ -168,18 +169,3 @@ def all_3d_desc(df):
         return np.concat(output)
     
     return df['mol'].progress_apply(calc_all_3d_descriptors)
-
-FEATURES = {
-    'morgan_embedding': morgan_embedding,
-    'baseline_fingerprint': baseline_fingerprint, 
-    'morgan_atom_embedding': morgan_atom_embedding,
-    'similarities': similarities,
-    'num_bonds': num_bonds,
-    'num_rings': num_rings,
-    'kappa_1': kappa_1,
-    'kappa_2': kappa_2,
-    'kappa_3': kappa_3,
-    'maccs': maccs,
-    'all_desc': all_desc,
-    'all_3d_desc': all_3d_desc,
-}
