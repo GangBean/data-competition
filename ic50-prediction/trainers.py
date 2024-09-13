@@ -17,10 +17,11 @@ import pandas as pd
 import numpy as np
 
 class Trainer:
-    def __init__(self, cfg, fold: int=0) -> None:
+    def __init__(self, cfg, input_dim: int, fold: int=0) -> None:
         self.cfg = cfg
         self.device = self._device()
         self.fold = fold
+        self.input_dim = input_dim
 
         self.model: nn.Module = self._model().to(self.device)
         self.optimizer: Optimizer = Adam(self.model.parameters(), lr=self.cfg.lr)
@@ -54,7 +55,7 @@ class Trainer:
         elif model == 'dnn':
             return SimpleDNN(
                 # input_dim=2_048 + 300 * 300 * 3
-                input_dim= 1 # 13_279 * 4
+                input_dim= self.input_dim # 13_279 * 4
                 , embed_dim=self.cfg.embed_dim
                 , layer_dims=self.cfg.layer_dims
                 , type=self.cfg.type)
@@ -117,9 +118,9 @@ class Trainer:
         actual_ic50 = []
         pred_pic50 = []
         for data in tqdm(train_dataloader):
-            X, Y, similarities = data['X'].to(self.device), data['pIC50'].to(self.device), data['Similarities'].to(self.device)
+            X, Y, embeddings = data['X'].to(self.device), data['pIC50'].to(self.device), data['embeddings'].to(self.device)
 
-            pred = self.model(X, similarities)
+            pred = self.model(X, embeddings)
             loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y.squeeze()))
 
             self.optimizer.zero_grad()
@@ -145,9 +146,9 @@ class Trainer:
         actual_ic50 = []
         pred_pic50 = []
         for data in tqdm(valid_dataloader):
-            X, Y, similarities = data['X'].to(self.device), data['pIC50'].to(self.device), data['Similarities'].to(self.device)
+            X, Y, embeddings = data['X'].to(self.device), data['pIC50'].to(self.device), data['embeddings'].to(self.device)
 
-            pred = self.model(X, similarities)
+            pred = self.model(X, embeddings)
             loss: torch.Tensor = torch.sqrt(self.loss(pred.squeeze(), Y.squeeze()))
 
             valid_loss += loss.item()
@@ -166,9 +167,9 @@ class Trainer:
         self.model.eval()
         submission = []
         for data in tqdm(test_dataloader):
-            X, similarities = data['X'].to(self.device), data['Similarities'].to(self.device)
+            X, embeddings = data['X'].to(self.device), data['embeddings'].to(self.device)
 
-            outputs = self.model(X, similarities)
+            outputs = self.model(X, embeddings)
             submission.extend(outputs.detach().cpu().numpy())
 
         return submission

@@ -81,7 +81,7 @@ def morgan_embedding(df, train_df, test_df):
     morgan_key = sorted(list(morgan_key_set))
     total_morgan_key2idx = {k:i for i, k in enumerate(morgan_key)} # morgan key to idx
 
-    def morgan_info_to_embedding(info, key_count=13_279, radius_count=4, max_len: int=1_000):
+    def morgan_info_to_embedding(info, key_count=13_279, radius_count=4, max_len: int=13_279):
         embedding = np.zeros((key_count, radius_count, )) # init embedding
 
         for key, radius_list in info.items(): # iterate over morgan_infos
@@ -167,5 +167,6 @@ def all_3d_desc(df):
         for _, value in desc_3d.items():
             output.append(np.array(value, dtype='float32').flatten())
         return np.concat(output)
-    
+
+    tqdm.pandas()
     return df['mol'].progress_apply(calc_all_3d_descriptors)

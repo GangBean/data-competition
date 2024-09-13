@@ -21,9 +21,10 @@ import wandb
 def run_fold(cfg, fold, fold_dataset, test_df, features):
     logger.info(f"[Train]_{fold + 1} 2. split data...")
     if cfg.model_name in ('dnn', ):
-        train_data = SimpleDNNDataset(fold_dataset['train_df'], train=True)
-        valid_data = SimpleDNNDataset(fold_dataset['valid_df'], train=True)
-        test_data = SimpleDNNDataset(test_df, train=False)
+        train_data = SimpleDNNDataset(fold_dataset['train_df'], features, train=True)
+        valid_data = SimpleDNNDataset(fold_dataset['valid_df'], features, train=True)
+        test_data = SimpleDNNDataset(test_df, features, train=False)
+        input_dim = train_data.input_dim
     elif cfg.model_name in ('xgb', ):
             train_data = XGBoostDataset(fold_dataset['train_df'], features, train=True)
             valid_data = XGBoostDataset(fold_dataset['valid_df'], features, train=True)
@@ -47,7 +48,7 @@ def run_fold(cfg, fold, fold_dataset, test_df, features):
     if cfg.model_name in ('xgb', ):
         trainer = XGBTrainer(cfg, fold=fold)
     else:
-        trainer = Trainer(cfg, fold=fold)
+        trainer = Trainer(cfg, input_dim, fold=fold)
 
     logger.info(f"[Train]_{fold + 1} 5. run trainer...")
     best_valid_loss, best_valid_score = trainer.run(train_dataloader, valid_dataloader)
@@ -92,16 +93,17 @@ def run(cfg: DictConfig):
         if cfg.model_name in ('xgb', ):
             trainer = XGBTrainer(cfg)
         else:
-            trainer = Trainer(cfg)
+            trainer = Trainer(cfg, input_dim=0)
         trainer.inference(np.mean(submissions, axis=0))
 
     else:
         logger.info("[Train] 2. split data...")
         train_df, valid_df, test_df = preprocess.split(valid_ratio=cfg.valid_ratio)
         if cfg.model_name in ('dnn', ):
-            train_data = SimpleDNNDataset(train_df, train=True)
-            valid_data = SimpleDNNDataset(valid_df, train=True)
-            test_data = SimpleDNNDataset(test_df, train=False)
+            train_data = SimpleDNNDataset(train_df, features, train=True)
+            valid_data = SimpleDNNDataset(valid_df, features, train=True)
+            test_data = SimpleDNNDataset(test_df, features, train=False)
+            input_dim = train_data.input_dim
         elif cfg.model_name in ('xgb', ):
             train_data = XGBoostDataset(train_df, features, train=True)
             valid_data = XGBoostDataset(valid_df, features, train=True)
@@ -125,7 +127,7 @@ def run(cfg: DictConfig):
         if cfg.model_name in ('xgb', ):
             trainer = XGBTrainer(cfg)
         else:
-            trainer = Trainer(cfg)
+            trainer = Trainer(cfg, input_dim)
 
         logger.info("[Train] 5. run trainer...")
         trainer.run(train_dataloader, valid_dataloader)
