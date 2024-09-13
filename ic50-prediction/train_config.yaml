@@ -2,26 +2,26 @@
 data_dir: ./data
 model_dir: ./data/models
 valid_ratio: .3
-k_fold: 3
+k_fold: 5
 
 # General hyper-params
 lr: 1e-4
 loss: mse
 device: cuda # cpu
-epoch: 1
+epoch: 100
 batch_size: 32
 seed: 42
 patience: 10
 
 # Weight & Biases
-wandb: False # False
+wandb: True # False
 project: ic50-prediction
-notes: "Add all descriptors to atom count"
-tags: ["dacon", "ic50", "regression", "custom morgan", "5-fold", "cross validation", "shuffle", "similarities", "mean reduce", "origin data", "XGB", "structure features"]
+notes: "dnn"
+tags: ["dacon", "ic50", "regression", "custom morgan", "5-fold", "cross validation", "shuffle", "similarities", "mean reduce", "origin data", "DNN", "structure features"]
 run_name: "dummy" # dummy parameter
 
 # Model hyper-params
-model_name: xgb # dnn # resnet
+model_name: dnn # xgb # dnn # resnet
 layer_dims: [1024, 1024, 512, 512, 256, 256, 128, 128, 64, 64, 32, 32] #, 64, 64, 128, 128, 256, 256, 512, 512, 1024, 1024]
 embed_dim: 64
 type: atom # atom
@@ -31,15 +31,15 @@ max_depth: 5
 
 # Features: turn on/off by 1/0
 features:
-  morgan_embedding: 1
-  baseline_fingerprint: 1
+  morgan_embedding: 0
+  baseline_fingerprint: 0
   morgan_atom_embedding: 1
   similarities: 1
-  num_bonds: 1
-  num_rings: 1
-  kappa_1: 1
-  kappa_2: 1
-  kappa_3: 1
-  maccs: 1
+  num_bonds: 0
+  num_rings: 0
+  kappa_1: 0
+  kappa_2: 0
+  kappa_3: 0
+  maccs: 0
   all_desc: 1
-  all_3d_desc: 0
+  all_3d_desc: 1
