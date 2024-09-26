@@ -1,0 +1,22 @@
+[tool.poetry]
+name = "236355"
+version = "0.1.0"
+description = ""
+authors = ["GangBean <xbox2537@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pandas = "^2.2.3"
+numpy = "^2.1.1"
+scikit-learn = "^1.5.2"
+seaborn = "^0.13.2"
+torch = "^2.4.1"
+torchvision = "^0.19.1"
+torchaudio = "^2.4.1"
+pyplotlib = "^0.0.56"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
