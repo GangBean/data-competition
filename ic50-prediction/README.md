@@ -1,3 +1,10 @@
+## Result
+public 459/905팀(1,653명) => private **43/900팀(Top 4.7%;1,653명)**
+![image](https://github.com/user-attachments/assets/b9eb7347-eed2-45dc-ad36-73153d870bb5)
+![image](https://github.com/user-attachments/assets/6112ef42-581d-4f0b-80e0-51045188df92)
+![image](https://github.com/user-attachments/assets/87df9d40-7995-42c0-8e09-7c9ecedbaac5)
+![image](https://github.com/user-attachments/assets/bc3d24a3-680f-47e6-be77-92632e4d5201)
+
 ## Linux ubuntu 20.04 error
 ```
 sudo apt-get install libxrender1
