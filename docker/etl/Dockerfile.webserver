@@ -1,0 +1,15 @@
+FROM apache/airflow:2.5.0
+
+# 작업 디렉토리 설정
+WORKDIR /opt/airflow
+
+# 쉘 스크립트 파일을 컨테이너에 복사
+COPY ./docker/etl/entrypoint.sh /opt/airflow/entrypoint.sh
+# COPY ./etl/dags /opt/airflow/dags
+# 쉘 스크립트 실행 권한 부여
+USER root
+RUN chmod +x /opt/airflow/entrypoint.sh
+USER airflow
+
+# Airflow 웹서버 실행
+ENTRYPOINT [ "/opt/airflow/entrypoint.sh" ]

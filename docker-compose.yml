@@ -1,0 +1,116 @@
+version: '3.8'
+
+services:
+  # FastAPI backend service
+  fastapi:
+    build:
+      context: .
+      dockerfile: ./docker/be/Dockerfile  # Dockerfile 경로
+    container_name: fastapi
+    ports:
+      - "80:8000"  # FastAPI를 8000 포트로 접근 가능
+    volumes:
+      - ./be:/app  # 로컬 디렉토리에서 FastAPI 애플리케이션을 컨테이너로 마운트
+    environment:
+      - MODULE_NAME=main  # FastAPI 애플리케이션의 모듈 이름
+    depends_on:
+      - postgres  # FastAPI는 PostgreSQL에 의존
+    networks:
+      - service_network
+
+  # Streamlit frontend service
+  streamlit:
+    build:
+      context: .
+      dockerfile: ./docker/fe/Dockerfile  # Dockerfile 경로
+    container_name: streamlit
+    ports:
+      - "8501:8501"  # Streamlit을 8501 포트로 접근 가능
+    volumes:
+      - ./fe/app:/app  # 로컬 디렉토리에서 Streamlit 애플리케이션을 컨테이너로 마운트
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+    depends_on:
+      - fastapi  # Streamlit은 FastAPI를 호출할 수 있어야 하므로 FastAPI에 의존
+    networks:
+      - service_network
+
+  # PostgreSQL service
+  postgres:
+    image: postgres:13
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=mydatabase
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # 데이터를 영구적으로 저장할 volume
+    ports:
+      - "5432:5432"  # PostgreSQL을 5432 포트로 접근 가능
+    networks:
+      - service_network
+
+  # Airflow service
+  # airflow:
+  #   image: apache/airflow:2.5.0
+  #   container_name: airflow
+  #   environment:
+  #     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:password@postgres/mydatabase  # PostgreSQL 연결
+  #     - AIRFLOW__DATABASE__EXECUTOR=LocalExecutor  # Airflow 실행자 설정
+  #     - AIRFLOW__DATABASE__LOAD_EXAMPLES=False  # 기본 제공되는 예제 DAG 비활성화
+  #     - AIRFLOW__WEBSERVER__PORT=8080  # Airflow 웹 서버 포트 설정
+  #   volumes:
+  #     - ./etl/dags:/opt/airflow/dags  # 로컬 디렉토리에서 Airflow DAG 파일을 컨테이너로 마운트
+  #     - ./etl/airflow_logs:/opt/airflow/logs  # Airflow 로그를 위한 volume
+  #   ports:
+  #     - "8080:8080"  # Airflow 웹 UI를 8080 포트로 접근 가능
+  #   depends_on:
+  #     - postgres  # Airflow는 PostgreSQL에 의존
+  #   networks:
+  #     - service_network
+  webserver:
+    build:
+      context: .
+      dockerfile: ./docker/etl/Dockerfile.webserver
+    container_name: airflow_webserver
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:password@postgres/mydatabase
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./etl/dags:/opt/airflow/dags
+      - ./etl/logs:/opt/airflow/logs
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+    networks:
+      - service_network
+
+  # Airflow Scheduler
+  scheduler:
+    build:
+      context: .
+      dockerfile: ./docker/etl/Dockerfile.scheduler
+    container_name: airflow_scheduler
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:password@postgres/mydatabase
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__CORE__LOAD_EXAMPLES=False
+    volumes:
+      - ./etl/dags:/opt/airflow/dags
+      - ./etl/logs:/opt/airflow/logs
+    depends_on:
+      - postgres
+    networks:
+      - service_network
+
+networks:
+  service_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  airflow_logs:
+    driver: local
