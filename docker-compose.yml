@@ -37,6 +37,9 @@ services:
 
   # PostgreSQL service
   postgres:
+    # build:
+    #   context: .
+    #   dockerfile: ./docker/db/Dockerfile
     image: postgres:13
     container_name: postgres
     environment:
@@ -45,29 +48,13 @@ services:
       - POSTGRES_DB=mydatabase
     volumes:
       - postgres_data:/var/lib/postgresql/data  # 데이터를 영구적으로 저장할 volume
+      - ./sql:/docker-entrypoint-initdb.d # 기본 수행 sql
     ports:
       - "5432:5432"  # PostgreSQL을 5432 포트로 접근 가능
     networks:
       - service_network
-
-  # Airflow service
-  # airflow:
-  #   image: apache/airflow:2.5.0
-  #   container_name: airflow
-  #   environment:
-  #     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:password@postgres/mydatabase  # PostgreSQL 연결
-  #     - AIRFLOW__DATABASE__EXECUTOR=LocalExecutor  # Airflow 실행자 설정
-  #     - AIRFLOW__DATABASE__LOAD_EXAMPLES=False  # 기본 제공되는 예제 DAG 비활성화
-  #     - AIRFLOW__WEBSERVER__PORT=8080  # Airflow 웹 서버 포트 설정
-  #   volumes:
-  #     - ./etl/dags:/opt/airflow/dags  # 로컬 디렉토리에서 Airflow DAG 파일을 컨테이너로 마운트
-  #     - ./etl/airflow_logs:/opt/airflow/logs  # Airflow 로그를 위한 volume
-  #   ports:
-  #     - "8080:8080"  # Airflow 웹 UI를 8080 포트로 접근 가능
-  #   depends_on:
-  #     - postgres  # Airflow는 PostgreSQL에 의존
-  #   networks:
-  #     - service_network
+  
+  # Airflow webserver
   webserver:
     build:
       context: .
