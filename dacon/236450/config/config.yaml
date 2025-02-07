@@ -1,0 +1,27 @@
+data:
+  train_path: './data/train.csv'
+  test_path: './data/test.csv'
+  submission_path: './data/sample_submission.csv'
+  output_path: './data/submission.csv'
+  label_column: '채무 불이행 여부'
+
+features:
+  categorical_columns:
+    - "주거 형태"
+    - "현재 직장 근속 연수"
+    - "대출 목적"
+    - "대출 상환 기간"
+  
+model:
+  name: 'xgboost'
+  params:
+    n_estimators: 100
+    max_depth: 5
+    learning_rate: 0.15
+    random_state: 42
+    use_label_encoder: false
+    eval_metric: 'auc'
+
+train:
+  test_size: 0.2
+  random_state: 42 
