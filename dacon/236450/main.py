@@ -17,8 +17,39 @@ import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm
 
 # 한글 폰트 설정
-plt.rcParams['font.family'] = 'NanumGothic'  # 나눔고딕 폰트 사용
-plt.rcParams['axes.unicode_minus'] = False    # 마이너스 기호 깨짐 방지
+def setup_korean_font():
+    # 시스템에 설치된 폰트 목록 확인
+    font_list = [f.name for f in fm.fontManager.ttflist]
+    
+    # 선호하는 폰트 순서대로 시도
+    preferred_fonts = [
+        'AppleGothic',          # MacOS
+        'Apple SD Gothic Neo',   # MacOS
+        'Malgun Gothic',        # Windows
+        'NanumGothic',          # 나눔고딕
+        'NanumBarunGothic',     # 나눔바른고딕
+        'Gulim',                # 굴림
+        'Dotum',                # 돋움
+        'DejaVu Sans'           # 기본 폰트
+    ]
+    
+    # 사용 가능한 첫 번째 폰트 선택
+    selected_font = None
+    for font in preferred_fonts:
+        if font in font_list:
+            selected_font = font
+            logging.info(f"Selected font: {selected_font}")
+            break
+    
+    if selected_font is None:
+        selected_font = 'DejaVu Sans'
+        logging.warning("No suitable Korean font found. Using DejaVu Sans.")
+    
+    # Matplotlib 설정
+    plt.rcParams['font.family'] = selected_font
+    plt.rcParams['axes.unicode_minus'] = False
+    
+    return selected_font
 
 def setup_logging():
     logging.basicConfig(
@@ -73,17 +104,24 @@ def plot_feature_importance(feature_names, importance_values, title):
     # Sort features by importance
     indices = np.argsort(importance_values)[::-1]
     
-    # Plot top 20 features
-    plt.figure(figsize=(10, 6))
-    plt.title(title, fontsize=12, pad=10)
-    plt.bar(range(min(20, len(feature_names))), 
-            importance_values[indices][:20])
-    plt.xticks(range(min(20, len(feature_names))), 
-               [feature_names[i] for i in indices][:20], 
-               rotation=45, ha='right', fontsize=10)
+    # Figure 생성
+    fig, ax = plt.subplots(figsize=(10, 6))
+    
+    # 바 플롯 생성
+    ax.bar(range(min(20, len(feature_names))), 
+           importance_values[indices][:20])
+    
+    # 제목 설정
+    ax.set_title(title, fontsize=12, pad=10)
+    
+    # x축 레이블 설정
+    feature_labels = [str(feature_names[i]) for i in indices][:20]  # 문자열로 변환
+    ax.set_xticks(range(min(20, len(feature_names))))
+    ax.set_xticklabels(feature_labels, rotation=45, ha='right', fontsize=10)
+    
     plt.tight_layout()
     
-    # Log plot to wandb
+    # wandb에 로깅
     wandb.log({title: wandb.Image(plt)})
     plt.close()
 
@@ -96,6 +134,11 @@ def main():
     # Setup
     setup_logging()
     logger = logging.getLogger(__name__)
+    selected_font = setup_korean_font()  # 폰트 설정
+    
+    # matplotlib 백엔드 설정 추가
+    import matplotlib
+    matplotlib.use('Agg')  # GUI 없이 이미지 생성
     
     # wandb logging 설정 확인
     use_wandb = config.get('wandb', {}).get('enabled', False)
