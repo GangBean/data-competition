@@ -2,12 +2,15 @@ import yaml
 import logging
 import random
 import wandb
+import os
 
 from datetime import datetime
 from src.datas.data_loader import DataLoader
 from src.features.feature_engineering import FeatureEngineer
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
+from catboost import CatBoostClassifier
 import pandas as pd
 import numpy as np
 
@@ -20,27 +23,65 @@ def setup_logging():
 def set_seed(seed: int):
     random.seed(seed)
     np.random.seed(seed)
+    # Set additional seeds for libraries
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    try:
+        import torch
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+    except ImportError:
+        pass
 
 def load_config(config_path: str = 'config/config.yaml'):
     with open(config_path, 'r', encoding='utf-8') as f:
         return yaml.safe_load(f)
 
+def get_model(model_config):
+    """모델 설정에 따라 적절한 모델을 반환합니다."""
+    model_type = model_config['type'].lower()
+    random_state = model_config.get('random_state', 42)  # default random_state
+    
+    if model_type == 'xgboost':
+        params = model_config['xgboost'].copy()
+        params['random_state'] = random_state
+        params['seed'] = random_state  # XGBoost specific seed
+        return XGBClassifier(**params)
+    elif model_type == 'lightgbm':
+        params = model_config['lightgbm'].copy()
+        params['seed'] = random_state  # LightGBM specific seed
+        params['deterministic'] = True  # LightGBM 결과 재현성 보장
+        return LGBMClassifier(**params)
+    elif model_type == 'catboost':
+        params = model_config['catboost'].copy()
+        params['random_seed'] = random_state
+        return CatBoostClassifier(**params, verbose=False)
+    else:
+        raise ValueError(f"Unsupported model type: {model_type}")
+
 def main():
+    # Set random seed
+    config = load_config()
+    random_state = config['train']['random_state']
+    set_seed(random_state)
+    
     # Setup
     setup_logging()
-    config = load_config()
     logger = logging.getLogger(__name__)
     
-    # Initialize wandb
+    # Initialize wandb with fixed random state
+    run_name = f"{config['model']['type'].lower()}_cv_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     wandb.init(
         project="credit-default-prediction",
         config=config,
-        name=f"xgb_cv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+        name=run_name,
+        settings=wandb.Settings(start_method="thread"),
+        # wandb도 random seed 고정
+        job_type=f"seed_{random_state}"
     )
     
-    # Set random seed
-    set_seed(config['train']['random_state'])
-
     # Load data
     logger.info("Loading data...")
     data_loader = DataLoader(config)
@@ -75,9 +116,9 @@ def main():
         X_train, X_val = X.iloc[train_idx], X.iloc[val_idx]
         y_train, y_val = y.iloc[train_idx], y.iloc[val_idx]
         
-        model = XGBClassifier(**config['model']['params'])
+        model = get_model(config['model'])
         eval_set = [(X_train, y_train), (X_val, y_val)]
-        model.fit(X_train, y_train, eval_set=eval_set, verbose=True)
+        model.fit(X_train, y_train, eval_set=eval_set)
         
         # Validation score
         val_score = model.score(X_val, y_val)
@@ -108,6 +149,9 @@ def main():
     submit = pd.read_csv(config['data']['submission_path'])
     submit['채무 불이행 확률'] = test_preds
     submit.to_csv(f"{config['data']['output_path']}_{datetime.now()}.csv", encoding='UTF-8-sig', index=False)
+
+    # 매핑 확인
+    feature_engineer.print_ordinal_mapping()
 
     # Close wandb run
     wandb.finish()
