@@ -45,8 +45,7 @@ class FeatureEngineer:
             '현재 직장 근속 연수'           
         ]
 
-    def process_features(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Process all features"""
+    def _create_feature(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
         # Create new features
         train_df['자산'] = train_df['연간 소득'] + train_df['현재 대출 잔액']
         test_df['자산'] = test_df['연간 소득'] + test_df['현재 대출 잔액']
@@ -100,6 +99,52 @@ class FeatureEngineer:
 
         train_df['파산 경험 여부'] = (train_df['개인 파산 횟수'] > 0).astype(int)
         test_df['파산 경험 여부'] = (test_df['개인 파산 횟수'] > 0).astype(int)
+
+        train_df['부채 대비 신용 점수'] = train_df['월 상환 부채액'] / (train_df['신용 점수'] + 1)
+        test_df['부채 대비 신용 점수'] = test_df['월 상환 부채액'] / (test_df['신용 점수'] + 1)
+
+        train_df['총 부채 비율'] = (train_df['현재 대출 잔액'] + train_df['현재 미상환 신용액']) / (train_df['자산'] + 1)
+        test_df['총 부채 비율'] = (test_df['현재 대출 잔액'] + test_df['현재 미상환 신용액']) / (test_df['자산'] + 1)
+
+        train_df['월 소득 대비 부채 비율'] = train_df['월 상환 부채액'] / (train_df['연간 소득'] / 12 + 1)
+        test_df['월 소득 대비 부채 비율'] = test_df['월 상환 부채액'] / (test_df['연간 소득'] / 12 + 1)
+
+        train_df['신용-부채 변화율'] = train_df['신용 비율'] - train_df['대출 비율']
+        test_df['신용-부채 변화율'] = test_df['신용 비율'] - test_df['대출 비율']
+
+        train_df['근속 연수 대비 소득'] = train_df['연간 소득'] / (train_df['근속 연수'] + 1)
+        test_df['근속 연수 대비 소득'] = test_df['연간 소득'] / (test_df['근속 연수'] + 1)
+
+        train_df['연체 발생 빈도'] = train_df['신용 문제 발생 횟수'] / (train_df['신용 거래 연수'] + 1)
+        test_df['연체 발생 빈도'] = test_df['신용 문제 발생 횟수'] / (test_df['신용 거래 연수'] + 1)
+
+        train_df['최근 연체 위험 지표'] = train_df['마지막 연체 이후 경과 개월 수'] / (train_df['신용 문제 발생 횟수'] + 1)
+        test_df['최근 연체 위험 지표'] = test_df['마지막 연체 이후 경과 개월 수'] / (test_df['신용 문제 발생 횟수'] + 1)
+
+        train_df['금융 위험 지수'] = (
+            train_df['대출 비율'] +
+            train_df['신용 비율'] +
+            train_df['DTI'] +
+            train_df['총 부채 비율'] +
+            train_df['연체 발생 빈도']
+        )
+        test_df['금융 위험 지수'] = (
+            test_df['대출 비율'] +
+            test_df['신용 비율'] +
+            test_df['DTI'] +
+            test_df['총 부채 비율'] +
+            test_df['연체 발생 빈도']
+        )
+
+        train_df['상환 속도'] = train_df['월 상환 부채액'] / (train_df['자산'] + 1)
+        test_df['상환 속도'] = test_df['월 상환 부채액'] / (test_df['자산'] + 1)
+
+        train_df['자산 부족 정도'] = train_df['자산'] / train_df['연간 소득']
+        test_df['자산 부족 정도'] = test_df['자산'] / test_df['연간 소득']
+
+    def process_features(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Process all features"""
+        self._create_feature(train_df, test_df)
 
         # Get column lists with defaults
         nominal_cols = sorted(self.config['features'].get('nominal_columns', self.default_nominal))
