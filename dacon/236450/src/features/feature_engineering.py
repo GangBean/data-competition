@@ -42,7 +42,7 @@ class FeatureEngineer:
         ]
         
         self.default_ordinal = [
-            '현재 직장 근속 연수'           
+            '현재 직장 근속 연수'
         ]
 
     def _create_feature(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
@@ -141,6 +141,35 @@ class FeatureEngineer:
 
         train_df['자산 부족 정도'] = train_df['자산'] / train_df['연간 소득']
         test_df['자산 부족 정도'] = test_df['자산'] / test_df['연간 소득']
+
+        train_df['재정 스트레스 지표'] = (train_df['DTI'] * 0.5 + train_df['LTV'] * 0.3) / (train_df['신용 점수'] + 1)
+        test_df['재정 스트레스 지표'] = (test_df['DTI'] * 0.5 + test_df['LTV'] * 0.3) / (test_df['신용 점수'] + 1)
+
+        train_df['단기 부채 위험'] = train_df['최근 연체 있음'] * train_df['월 상환 부채액']
+        test_df['단기 부채 위험'] = test_df['최근 연체 있음'] * test_df['월 상환 부채액']
+
+        train_df['주거 형태_소득'] = train_df['주거 형태 채무 불이행률'] * train_df['연간 소득']
+        test_df['주거 형태_소득'] = test_df['주거 형태 채무 불이행률'] * test_df['연간 소득']
+
+        train_df['과거 신용 위험 지표'] = train_df['신용 문제율'] * (1 + train_df['파산 경험 여부'])
+        test_df['과거 신용 위험 지표'] = test_df['신용 문제율'] * (1 + test_df['파산 경험 여부'])
+
+        # 대출 상환 기간을 숫자로 매핑
+        loan_term_mapping = {
+            '단기': 3,
+            '장기': 10
+        }
+        train_df['잔액 대비 상환 속도'] = train_df['현재 대출 잔액'] / (train_df['대출 상환 기간'].map(loan_term_mapping) + 1)
+        test_df['잔액 대비 상환 속도'] = test_df['현재 대출 잔액'] / (test_df['대출 상환 기간'].map(loan_term_mapping) + 1)
+
+        train_df['부채 증가 위험'] = train_df['대출 비율'] * (1 / (train_df['연간 소득'] + 1))
+        test_df['부채 증가 위험'] = test_df['대출 비율'] * (1 / (test_df['연간 소득'] + 1))
+
+        train_df['대출 목적_부채 부담'] = train_df['대출 목적 채무 불이행률'] * train_df['월 상환 부채액']
+        test_df['대출 목적_부채 부담'] = test_df['대출 목적 채무 불이행률'] * test_df['월 상환 부채액']
+
+        train_df['신용 위험'] = (1 / (train_df['신용 점수'] + 1)) * train_df['최근 연체 있음']
+        test_df['신용 위험'] = (1 / (test_df['신용 점수'] + 1)) * test_df['최근 연체 있음']
 
     def process_features(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Process all features"""
