@@ -42,9 +42,13 @@ features:
     - 현재 대출 잔액
     - 현재 미상환 신용액
     - 월 상환 부채액
+    - 자산
+    - 대출 이자율
+    - 대출 비율
+    - 신용 비율
 
 model:
-  type: "lightgbm"  # "xgboost", "lightgbm", "catboost" 중 선택
+  type: "catboost"  # "xgboost", "lightgbm", "catboost" 중 선택
   random_state: 42
   xgboost:
     n_estimators: 1000

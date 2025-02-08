@@ -13,6 +13,7 @@ from lightgbm import LGBMClassifier
 from catboost import CatBoostClassifier
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 def setup_logging():
     logging.basicConfig(
@@ -62,6 +63,25 @@ def get_model(model_config):
     else:
         raise ValueError(f"Unsupported model type: {model_type}")
 
+def plot_feature_importance(feature_names, importance_values, title):
+    """Feature importance를 시각화합니다."""
+    # Sort features by importance
+    indices = np.argsort(importance_values)[::-1]
+    
+    # Plot top 20 features
+    plt.figure(figsize=(10, 6))
+    plt.title(title)
+    plt.bar(range(min(20, len(feature_names))), 
+            importance_values[indices][:20])
+    plt.xticks(range(min(20, len(feature_names))), 
+               [feature_names[i] for i in indices][:20], 
+               rotation=45, ha='right')
+    plt.tight_layout()
+    
+    # Log plot to wandb
+    wandb.log({title: wandb.Image(plt)})
+    plt.close()
+
 def main():
     # Set random seed
     config = load_config()
@@ -110,6 +130,7 @@ def main():
     logger.info(f"Starting {n_splits}-fold cross validation...")
     test_preds = np.zeros(len(test_processed))
     val_scores = []
+    feature_importance = np.zeros(len(X.columns))
     
     for fold, (train_idx, val_idx) in enumerate(skf.split(X, y), 1):
         logger.info(f"Training fold {fold}/{n_splits}")
@@ -134,6 +155,23 @@ def main():
         
         # Predict test data
         test_preds += model.predict_proba(test_processed)[:, 1] / n_splits
+        
+        # Calculate feature importance
+        if config['model']['type'].lower() == 'xgboost':
+            importance = model.feature_importances_
+        elif config['model']['type'].lower() == 'lightgbm':
+            importance = model.feature_importances_
+        elif config['model']['type'].lower() == 'catboost':
+            importance = model.feature_importances_
+        
+        feature_importance += importance / n_splits
+        
+        # Log individual fold feature importance
+        plot_feature_importance(
+            X.columns, 
+            importance,
+            f"Fold {fold} Feature Importance"
+        )
 
     mean_val_score = np.mean(val_scores)
     std_val_score = np.std(val_scores)
@@ -144,6 +182,25 @@ def main():
         "mean_val_score": mean_val_score,
         "std_val_score": std_val_score,
     })
+
+    # Plot average feature importance across all folds
+    plot_feature_importance(
+        X.columns,
+        feature_importance,
+        "Average Feature Importance"
+    )
+    
+    # Save feature importance to CSV
+    feature_importance_df = pd.DataFrame({
+        'feature': X.columns,
+        'importance': feature_importance
+    }).sort_values('importance', ascending=False)
+    
+    feature_importance_df.to_csv(
+        f"./data/feature_importance_{run_name}.csv",
+        encoding='UTF-8-sig',
+        index=False
+    )
 
     # Save results
     logger.info("Saving results...")

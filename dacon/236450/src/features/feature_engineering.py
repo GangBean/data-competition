@@ -46,6 +46,19 @@ class FeatureEngineer:
 
     def process_features(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Process all features"""
+        # Create new features
+        train_df['자산'] = train_df['연간 소득'] + train_df['현재 대출 잔액']
+        test_df['자산'] = test_df['연간 소득'] + test_df['현재 대출 잔액']
+
+        train_df['대출 이자율'] = train_df['월 상환 부채액'] / train_df['현재 대출 잔액'] * 100
+        test_df['대출 이자율'] = test_df['월 상환 부채액'] / test_df['현재 대출 잔액'] * 100
+
+        train_df['대출 비율'] = train_df['월 상환 부채액'] / train_df['자산'] * 100
+        test_df['대출 비율'] = test_df['월 상환 부채액'] / test_df['자산'] * 100
+        
+        train_df['신용 비율'] = train_df['현재 미상환 신용액'] / train_df['자산'] * 100
+        test_df['신용 비율'] = test_df['현재 미상환 신용액'] / test_df['자산'] * 100
+
         # Get column lists with defaults
         nominal_cols = sorted(self.config['features'].get('nominal_columns', self.default_nominal))
         ordinal_cols = sorted(self.ordinal_feature_names if self.ordinal_feature_names else self.default_ordinal)
