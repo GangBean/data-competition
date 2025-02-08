@@ -43,6 +43,7 @@ def get_model(model_config):
     """모델 설정에 따라 적절한 모델을 반환합니다."""
     model_type = model_config['type'].lower()
     random_state = model_config.get('random_state', 42)  # default random_state
+    logging.info(f"[Model] {model_type} is selected..")
     
     if model_type == 'xgboost':
         params = model_config['xgboost'].copy()
@@ -148,7 +149,7 @@ def main():
     logger.info("Saving results...")
     submit = pd.read_csv(config['data']['submission_path'])
     submit['채무 불이행 확률'] = test_preds
-    submit.to_csv(f"{config['data']['output_path']}_{datetime.now()}.csv", encoding='UTF-8-sig', index=False)
+    submit.to_csv(f"./data/{run_name}.csv", encoding='UTF-8-sig', index=False)
 
     # 매핑 확인
     feature_engineer.print_ordinal_mapping()

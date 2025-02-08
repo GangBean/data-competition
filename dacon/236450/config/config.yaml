@@ -44,7 +44,7 @@ features:
     - 월 상환 부채액
 
 model:
-  type: "catboost"  # "xgboost", "lightgbm", "catboost" 중 선택
+  type: "lightgbm"  # "xgboost", "lightgbm", "catboost" 중 선택
   random_state: 42
   xgboost:
     n_estimators: 1000
