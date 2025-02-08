@@ -2,7 +2,7 @@ data:
   train_path: './data/train.csv'
   test_path: './data/test.csv'
   submission_path: './data/sample_submission.csv'
-  output_path: './data/submission.csv'
+  output_path: './data/submission'
   label_column: '채무 불이행 여부'
 
 features:
@@ -24,4 +24,5 @@ model:
 
 train:
   test_size: 0.2
+  n_splits: 5
   random_state: 42 
