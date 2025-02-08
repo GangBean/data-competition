@@ -14,6 +14,11 @@ from catboost import CatBoostClassifier
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib.font_manager as fm
+
+# 한글 폰트 설정
+plt.rcParams['font.family'] = 'NanumGothic'  # 나눔고딕 폰트 사용
+plt.rcParams['axes.unicode_minus'] = False    # 마이너스 기호 깨짐 방지
 
 def setup_logging():
     logging.basicConfig(
@@ -70,12 +75,12 @@ def plot_feature_importance(feature_names, importance_values, title):
     
     # Plot top 20 features
     plt.figure(figsize=(10, 6))
-    plt.title(title)
+    plt.title(title, fontsize=12, pad=10)
     plt.bar(range(min(20, len(feature_names))), 
             importance_values[indices][:20])
     plt.xticks(range(min(20, len(feature_names))), 
                [feature_names[i] for i in indices][:20], 
-               rotation=45, ha='right')
+               rotation=45, ha='right', fontsize=10)
     plt.tight_layout()
     
     # Log plot to wandb
@@ -92,16 +97,19 @@ def main():
     setup_logging()
     logger = logging.getLogger(__name__)
     
-    # Initialize wandb with fixed random state
+    # wandb logging 설정 확인
+    use_wandb = config.get('wandb', {}).get('enabled', False)
     run_name = f"{config['model']['type'].lower()}_cv_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
-    wandb.init(
-        project="credit-default-prediction",
-        config=config,
-        name=run_name,
-        settings=wandb.Settings(start_method="thread"),
-        # wandb도 random seed 고정
-        job_type=f"seed_{random_state}"
-    )
+    
+    if use_wandb:
+        # Initialize wandb with fixed random state
+        wandb.init(
+            project=config['wandb'].get('project', "credit-default-prediction"),
+            config=config,
+            name=run_name,
+            settings=wandb.Settings(start_method="thread"),
+            job_type=f"seed_{random_state}"
+        )
     
     # Load data
     logger.info("Loading data...")
@@ -148,10 +156,11 @@ def main():
         logger.info(f"Fold {fold} validation score: {val_score:.4f}")
         
         # Log metrics to wandb
-        wandb.log({
-            f"fold_{fold}_val_score": val_score,
-            "fold": fold,
-        })
+        if use_wandb:
+            wandb.log({
+                f"fold_{fold}_val_score": val_score,
+                "fold": fold,
+            })
         
         # Predict test data
         test_preds += model.predict_proba(test_processed)[:, 1] / n_splits
@@ -167,28 +176,31 @@ def main():
         feature_importance += importance / n_splits
         
         # Log individual fold feature importance
-        plot_feature_importance(
-            X.columns, 
-            importance,
-            f"Fold {fold} Feature Importance"
-        )
+        if use_wandb:
+            plot_feature_importance(
+                X.columns, 
+                importance,
+                f"Fold {fold} Feature Importance"
+            )
 
     mean_val_score = np.mean(val_scores)
     std_val_score = np.std(val_scores)
     logger.info(f"Mean validation score: {mean_val_score:.4f} ± {std_val_score:.4f}")
     
     # Log final metrics to wandb
-    wandb.log({
-        "mean_val_score": mean_val_score,
-        "std_val_score": std_val_score,
-    })
+    if use_wandb:
+        wandb.log({
+            "mean_val_score": mean_val_score,
+            "std_val_score": std_val_score,
+        })
 
     # Plot average feature importance across all folds
-    plot_feature_importance(
-        X.columns,
-        feature_importance,
-        "Average Feature Importance"
-    )
+    if use_wandb:
+        plot_feature_importance(
+            X.columns,
+            feature_importance,
+            "Average Feature Importance"
+        )
     
     # Save feature importance to CSV
     feature_importance_df = pd.DataFrame({
@@ -212,7 +224,8 @@ def main():
     feature_engineer.print_ordinal_mapping()
 
     # Close wandb run
-    wandb.finish()
+    if use_wandb:
+        wandb.finish()
 
 if __name__ == "__main__":
     main()

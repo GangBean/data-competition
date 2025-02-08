@@ -33,7 +33,13 @@ features:
     - 마지막 연체 이후 경과 개월 수
     - 개인 파산 횟수
     - 신용 점수
-  
+    - 대출 목적_고위험
+    - 근속 연수
+    - 장기 근속 여부
+    - 최근 연체 있음
+    - 파산 경험 여부
+    - 신용 점수 등급
+
   numerical_continuous:
     - 연간 소득
     - 체납 세금 압류 횟수
@@ -46,6 +52,13 @@ features:
     - 대출 이자율
     - 대출 비율
     - 신용 비율
+    - 주거 형태 채무 불이행률
+    - 대출 목적 채무 불이행률
+    - 대출 상환 기간 채무 불이행률
+    - DTI
+    - LTV
+    - 로그 신용 점수
+    - 신용 문제율
 
 model:
   type: "catboost"  # "xgboost", "lightgbm", "catboost" 중 선택
@@ -77,3 +90,7 @@ train:
   test_size: 0.2
   n_splits: 5
   random_state: 42
+
+wandb:
+  enabled: true  # wandb logging 활성화/비활성화
+  project: "credit-default-prediction"  # wandb 프로젝트명
