@@ -108,10 +108,10 @@ train:
   random_state: 42
   scaler: robust # minmax, standard, robust, maxabs, normalizer
   importance:
-    use: False # True, False
-    type: threshold # threshold
-    top-k: 30
-    threshold: .1
+    use: True # True, False
+    type: threshold # rank, threshold
+    top-k: 70
+    threshold: .01
 
 wandb:
   enabled: true  # wandb logging 활성화/비활성화

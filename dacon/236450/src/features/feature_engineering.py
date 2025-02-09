@@ -87,7 +87,7 @@ class FeatureEngineer:
 
             if importance_type == "rank":
                 rank_threshold = self.config['train']['importance'].get('top-k', 20)  # 상위 N개 선택
-                top_features = sorted(importance, key=importance.get, reverse=True)[:rank_threshold]
+                top_features = sorted(importance.keys(), key=importance.get, reverse=True)[:rank_threshold]
                 selected_cols = selected_cols.intersection(set(top_features))
 
             elif importance_type == "threshold":
