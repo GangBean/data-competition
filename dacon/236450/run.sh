@@ -1,3 +1,3 @@
 #!/bin/bash
 
-poetry run python main.py
+poetry run python main.py "$@"
