@@ -78,8 +78,10 @@ class FeatureEngineer:
             set(ordinal_keys) |
             set(self.config['features']['numerical_discrete']) |
             set(self.config['features']['numerical_continuous'])))
-
-
+        
+        # logging.info(f"[Before Filtering] {selected_cols} / {len(selected_cols)} 개")
+        
+        # 1. Importance based filtering
         if self.config['train']['importance']['use']:
             importance_type = self.config['train']['importance']['type']
             importance = self.config['importance']  # Feature Importance Dictionary
@@ -100,6 +102,19 @@ class FeatureEngineer:
             
             selected_cols = sorted(list(selected_cols), key=importance.get, reverse=True)
 
+        # 2. Group based filtering
+        if self.config['train']['group']['use']:
+            groups_in_use: list[str] = self.config['train']['group']['value']
+            groups: dict = self.config['groups']
+            features_in_groups = set()
+            for group in groups_in_use:
+                features_in_groups = features_in_groups | set(groups.get(group, []))
+
+            # logging.info(f"[Group features] {features_in_groups} / {len(features_in_groups)} 개")
+            # logging.info(f"[누락된 Group feature] {set(selected_cols) - features_in_groups}")
+            
+            selected_cols = sorted(list(set(selected_cols).intersection(features_in_groups)))
+
         logging.info(f"[Selected Features]: {selected_cols} / {len(selected_cols)} 개")
 
         train_df.drop(columns=[col for col in train_df.columns if col != self.config['data']['label_column'] and col not in selected_cols], inplace=True)
@@ -110,16 +125,22 @@ class FeatureEngineer:
         create_feature(train_df, test_df)
         self._select_feature(train_df, test_df)
 
+        # logging.info(f"[After selection]: {train_df.columns} / {len(train_df.columns)} 개")
+
         # Get column lists with defaults
         nominal_cols = sorted(list(set(self.config['features'].get('nominal_columns', self.default_nominal)).intersection(set(train_df.columns))))
         ordinal_cols = sorted(list(set(self.ordinal_feature_names if self.ordinal_feature_names else self.default_ordinal).intersection(set(train_df.columns))))
         numerical_cols = sorted(list(set(train_df.columns) - set(nominal_cols) - set(ordinal_cols) - {self.config['data']['label_column']}))
 
+        # logging.info(f"개수: nominal: {len(nominal_cols)} / ordinal: {len(ordinal_cols)} / numerical: {len(numerical_cols)}")
+        # logging.info(f"비교: {(set(nominal_cols) | set(ordinal_cols) | set(numerical_cols)) - set(train_df.columns)}")
+        
         # Encode nominal features
         train_nominal, test_nominal = self._encode_nominal_features(
             train_df[nominal_cols], 
             test_df[nominal_cols]
         ) if nominal_cols else (pd.DataFrame(), pd.DataFrame())
+        # logging.info(f"[after encoding nomianl]: {train_nominal}")
 
         # Encode ordinal features
         train_ordinal, test_ordinal = self._encode_ordinal_features(
