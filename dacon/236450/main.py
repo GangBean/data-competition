@@ -130,7 +130,7 @@ def main():
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Train model with wandb logging option')
     parser.add_argument('--wandb', action='store_true', help='Enable wandb logging')
-    parser.add_argument('--no-wandb', action='store_false', dest='wandb', help='Disable wandb logging')
+    parser.add_argument('--wandb-no', action='store_false', dest='wandb', help='Disable wandb logging')
     parser.set_defaults(wandb=None)  # None으로 설정하여 config 파일의 설정을 따르도록 함
     args = parser.parse_args()
 
