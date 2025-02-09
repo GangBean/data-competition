@@ -38,7 +38,7 @@ features:
     - 장기 근속 여부
     - 최근 연체 있음
     - 파산 경험 여부
-    - 신용 점수 등급
+    # - 신용 점수 등급
 
   numerical_continuous:
     - 연간 소득
@@ -48,14 +48,14 @@ features:
     - 현재 대출 잔액
     - 현재 미상환 신용액
     - 월 상환 부채액
-    - 자산
+    - 자산 # 1
     - 대출 이자율
     - 대출 비율
     - 신용 비율
     - 주거 형태 채무 불이행률
     - 대출 목적 채무 불이행률
     - 대출 상환 기간 채무 불이행률
-    - DTI
+    - DTI # 2
     - LTV
     - 로그 신용 점수
     - 신용 문제율
@@ -69,14 +69,13 @@ features:
     - 금융 위험 지수
     - 상환 속도
     - 자산 부족 정도
-    - 재정 스트레스 지표
+    - 재정 스트레스 지표 # 3
     - 단기 부채 위험
     - 과거 신용 위험 지표
     - 잔액 대비 상환 속도
     - 부채 증가 위험
     - 대출 목적_부채 부담
     - 신용 위험
-
 
 model:
   type: "catboost"  # "xgboost", "lightgbm", "catboost" 중 선택
@@ -108,6 +107,7 @@ train:
   test_size: 0.2
   n_splits: 5
   random_state: 42
+  scaler: robust # minmax, standard, robust, maxabs, normalizer
 
 wandb:
   enabled: true  # wandb logging 활성화/비활성화

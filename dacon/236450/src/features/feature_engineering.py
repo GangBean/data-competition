@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import OneHotEncoder, OrdinalEncoder
+from sklearn.preprocessing import (
+    OneHotEncoder, OrdinalEncoder,
+    MinMaxScaler, RobustScaler, StandardScaler, MaxAbsScaler, Normalizer,
+)
 from typing import Dict, Tuple
 import logging
 
@@ -32,7 +35,6 @@ class FeatureEngineer:
             handle_unknown='use_encoded_value',
             unknown_value=-1
         )
-        self.logger = logging.getLogger(__name__)
         
         # Default features remain the same
         self.default_nominal = [
@@ -44,6 +46,29 @@ class FeatureEngineer:
         self.default_ordinal = [
             '현재 직장 근속 연수'
         ]
+
+        self.scaler = self._scaler(self.config['train']['scaler'])
+    
+        self.logger = logging.getLogger(__name__)
+
+    def _scaler(self, type: str) -> any:
+        """Return scaler based on config type
+        
+        Args:
+            type (str): Type of scaler ('minmax', 'standard', 'robust', 'maxabs', 'normalizer')
+            
+        Returns:
+            Scaler object from sklearn.preprocessing
+        """
+        scaler_map = {
+            'minmax': MinMaxScaler(),
+            'standard': StandardScaler(),
+            'robust': RobustScaler(),
+            'maxabs': MaxAbsScaler(),
+            'normalizer': Normalizer()
+        }
+        
+        return scaler_map.get(type.lower())
 
     def _create_feature(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
         # Create new features
@@ -171,9 +196,22 @@ class FeatureEngineer:
         train_df['신용 위험'] = (1 / (train_df['신용 점수'] + 1)) * train_df['최근 연체 있음']
         test_df['신용 위험'] = (1 / (test_df['신용 점수'] + 1)) * test_df['최근 연체 있음']
 
+    def _select_feature(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
+        ordinal_keys = [list(d.keys())[0] if isinstance(d, dict) else d for d in self.config['features']['ordinal_columns']]
+        selected_cols = sorted(list(set(self.config['features']['nominal_columns']) |
+            set(ordinal_keys) |
+            set(self.config['features']['numerical_discrete']) |
+            set(self.config['features']['numerical_continuous'])))
+
+        train_df.drop(columns=[col for col in train_df.columns if col != self.config['data']['label_column'] and col not in selected_cols], inplace=True)
+        test_df.drop(columns=[col for col in test_df.columns if col != self.config['data']['label_column'] and col not in selected_cols], inplace=True)
+
+        logging.info(f"[Selected Features]: {selected_cols}")
+
     def process_features(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Process all features"""
         self._create_feature(train_df, test_df)
+        self._select_feature(train_df, test_df)
 
         # Get column lists with defaults
         nominal_cols = sorted(self.config['features'].get('nominal_columns', self.default_nominal))
@@ -192,21 +230,54 @@ class FeatureEngineer:
             test_df[ordinal_cols]
         ) if ordinal_cols else (pd.DataFrame(), pd.DataFrame())
 
+        # Scaling numerical features
+        train_numeric, test_numeric = self._scaling_numerical_features(
+            train_df[numerical_cols],
+            test_df[numerical_cols]
+        ) if numerical_cols else (pd.DataFrame(), pd.DataFrame())
+
         # Combine features
         train_processed = pd.concat([
-            train_df[numerical_cols],
+            train_numeric,
             train_nominal,
             train_ordinal,
             train_df[self.config['data']['label_column']]
         ], axis=1)
 
         test_processed = pd.concat([
-            test_df[numerical_cols],
+            test_numeric,
             test_nominal,
             test_ordinal
         ], axis=1)
 
+        logging.info(f"[Final Features]: {train_processed.columns} / {len(train_processed.columns)} 개")
+
         return train_processed, test_processed
+    
+    def _scaling_numerical_features(self, train_num: pd.DataFrame, test_num: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        # Dataframe copy
+        train_num = train_num.copy()
+        test_num = test_num.copy()
+
+        # fill NaN with mean
+        train_num.fillna(train_num.mean(), inplace=True)
+        test_num.fillna(test_num.mean(), inplace=True)
+
+        # drop all NaN cols
+        train_num.dropna(axis=1, inplace=True)
+        test_num = test_num[train_num.columns]
+        
+        train_scaled = pd.DataFrame(
+            self.scaler.fit_transform(train_num),
+            columns=train_num.columns
+        )
+        
+        test_scaled = pd.DataFrame(
+            self.scaler.transform(test_num),
+            columns=test_num.columns
+        )
+
+        return train_scaled, test_scaled
 
     def _encode_nominal_features(self, train_cat: pd.DataFrame, test_cat: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Encode nominal features using OneHotEncoder"""

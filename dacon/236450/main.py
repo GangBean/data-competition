@@ -3,6 +3,7 @@ import logging
 import random
 import wandb
 import os
+import argparse
 
 from datetime import datetime
 from src.datas.data_loader import DataLoader
@@ -126,6 +127,13 @@ def plot_feature_importance(feature_names, importance_values, title):
     plt.close()
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Train model with wandb logging option')
+    parser.add_argument('--wandb', action='store_true', help='Enable wandb logging')
+    parser.add_argument('--no-wandb', action='store_false', dest='wandb', help='Disable wandb logging')
+    parser.set_defaults(wandb=None)  # None으로 설정하여 config 파일의 설정을 따르도록 함
+    args = parser.parse_args()
+
     # Set random seed
     config = load_config()
     random_state = config['train']['random_state']
@@ -134,14 +142,14 @@ def main():
     # Setup
     setup_logging()
     logger = logging.getLogger(__name__)
-    selected_font = setup_korean_font()  # 폰트 설정
+    selected_font = setup_korean_font()
     
     # matplotlib 백엔드 설정 추가
     import matplotlib
-    matplotlib.use('Agg')  # GUI 없이 이미지 생성
+    matplotlib.use('Agg')
     
-    # wandb logging 설정 확인
-    use_wandb = config.get('wandb', {}).get('enabled', False)
+    # wandb logging 설정 확인 (command line argument 우선)
+    use_wandb = args.wandb if args.wandb is not None else config.get('wandb', {}).get('enabled', False)
     run_name = f"{config['model']['type'].lower()}_cv_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
     
     if use_wandb:
@@ -263,8 +271,8 @@ def main():
     submit['채무 불이행 확률'] = test_preds
     submit.to_csv(f"./data/{run_name}.csv", encoding='UTF-8-sig', index=False)
 
-    # 매핑 확인
-    feature_engineer.print_ordinal_mapping()
+    # # 매핑 확인
+    # feature_engineer.print_ordinal_mapping()
 
     # Close wandb run
     if use_wandb:
