@@ -131,6 +131,7 @@ def main():
     parser = argparse.ArgumentParser(description='Train model with wandb logging option')
     parser.add_argument('--wandb', action='store_true', help='Enable wandb logging')
     parser.add_argument('--wandb-no', action='store_false', dest='wandb', help='Disable wandb logging')
+    parser.add_argument('--desc', type=str, default="", help='Add a description for wandb logging')  # --desc 추가
     parser.set_defaults(wandb=None)  # None으로 설정하여 config 파일의 설정을 따르도록 함
     args = parser.parse_args()
 
@@ -159,7 +160,8 @@ def main():
             config=config,
             name=run_name,
             settings=wandb.Settings(start_method="thread"),
-            job_type=f"seed_{random_state}"
+            job_type=f"seed_{random_state}",
+            tags=[args.desc if args.desc else None]
         )
     
     # Load data
