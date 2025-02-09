@@ -110,8 +110,8 @@ def create_feature(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
 
     # 대출 상환 기간을 숫자로 매핑
     loan_term_mapping = {
-        '단기': 3,
-        '장기': 10
+        '단기 상환': 3,
+        '장기 상환': 10
     }
     train_df['잔액 대비 상환 속도'] = train_df['현재 대출 잔액'] / (train_df['대출 상환 기간'].map(loan_term_mapping) + 1)
     test_df['잔액 대비 상환 속도'] = test_df['현재 대출 잔액'] / (test_df['대출 상환 기간'].map(loan_term_mapping) + 1)
