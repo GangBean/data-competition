@@ -79,10 +79,31 @@ class FeatureEngineer:
             set(self.config['features']['numerical_discrete']) |
             set(self.config['features']['numerical_continuous'])))
 
+
+        if self.config['train']['importance']['use']:
+            importance_type = self.config['train']['importance']['type']
+            importance = self.config['importance']  # Feature Importance Dictionary
+            selected_cols = set(selected_cols)  # 기존 선택된 컬럼들
+
+            if importance_type == "rank":
+                rank_threshold = self.config['train']['importance'].get('top-k', 20)  # 상위 N개 선택
+                top_features = sorted(importance, key=importance.get, reverse=True)[:rank_threshold]
+                selected_cols = selected_cols.intersection(set(top_features))
+
+            elif importance_type == "threshold":
+                importance_threshold = self.config['train']['importance'].get('threshold', 1.0)  # 임계값 설정
+                filtered_features = [f for f, imp in importance.items() if imp >= importance_threshold]
+                selected_cols = selected_cols.intersection(set(filtered_features))
+
+            else:
+                raise ValueError(f"[Importance Type] 사용 불가한 importance type 입니다 (rank, threshold): {importance_type}")
+            
+            selected_cols = sorted(list(selected_cols), key=importance.get, reverse=True)
+
+        logging.info(f"[Selected Features]: {selected_cols} / {len(selected_cols)} 개")
+
         train_df.drop(columns=[col for col in train_df.columns if col != self.config['data']['label_column'] and col not in selected_cols], inplace=True)
         test_df.drop(columns=[col for col in test_df.columns if col != self.config['data']['label_column'] and col not in selected_cols], inplace=True)
-
-        logging.info(f"[Selected Features]: {selected_cols}")
 
     def process_features(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Process all features"""
@@ -90,8 +111,8 @@ class FeatureEngineer:
         self._select_feature(train_df, test_df)
 
         # Get column lists with defaults
-        nominal_cols = sorted(self.config['features'].get('nominal_columns', self.default_nominal))
-        ordinal_cols = sorted(self.ordinal_feature_names if self.ordinal_feature_names else self.default_ordinal)
+        nominal_cols = sorted(list(set(self.config['features'].get('nominal_columns', self.default_nominal)).intersection(set(train_df.columns))))
+        ordinal_cols = sorted(list(set(self.ordinal_feature_names if self.ordinal_feature_names else self.default_ordinal).intersection(set(train_df.columns))))
         numerical_cols = sorted(list(set(train_df.columns) - set(nominal_cols) - set(ordinal_cols) - {self.config['data']['label_column']}))
 
         # Encode nominal features
