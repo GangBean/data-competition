@@ -38,7 +38,6 @@ features:
     - 장기 근속 여부
     - 최근 연체 있음
     - 파산 경험 여부
-    # - 신용 점수 등급
 
   numerical_continuous:
     - 연간 소득
