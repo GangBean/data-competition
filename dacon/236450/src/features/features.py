@@ -135,3 +135,59 @@ def create_feature(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
     train_df['자산4'] = train_df['연간 소득'] + (train_df['부채 대비 신용 점수'] * train_df['최대 신용한도'])
     test_df['자산4'] = test_df['연간 소득'] + (test_df['부채 대비 신용 점수'] * test_df['최대 신용한도'])
 
+    # feature #5
+    # 월 소득 대비 대출 상환액 비율
+    train_df['월 소득 대비 대출 상환액 비율'] = train_df['월 상환 부채액'] / (train_df['연간 소득'] / 12)
+    test_df['월 소득 대비 대출 상환액 비율'] = test_df['월 상환 부채액'] / (test_df['연간 소득'] / 12)
+    
+    # 최대 신용한도 대비 사용 비율
+    train_df['최대 신용한도 대비 사용 비율'] = train_df['현재 미상환 신용액'] / (train_df['최대 신용한도'] + 1)
+    test_df['최대 신용한도 대비 사용 비율'] = test_df['현재 미상환 신용액'] / (test_df['최대 신용한도'] + 1)
+    
+    # 대출 금액 대비 연체 위험
+    train_df['대출 금액 대비 연체 위험'] = train_df['현재 대출 잔액'] / (train_df['마지막 연체 이후 경과 개월 수'] + 1)
+    test_df['대출 금액 대비 연체 위험'] = test_df['현재 대출 잔액'] / (test_df['마지막 연체 이후 경과 개월 수'] + 1)
+    
+    # 신용 점수 변화율
+    train_df['신용 점수 변화율'] = train_df['로그 신용 점수'] / (train_df['신용 거래 연수'] + 1)
+    test_df['신용 점수 변화율'] = test_df['로그 신용 점수'] / (test_df['신용 거래 연수'] + 1)
+    
+    # 신용 위험 가중치
+    train_df['신용 위험 가중치'] = (1 / (train_df['신용 점수'] + 1)) * train_df['신용 문제 발생 횟수']
+    test_df['신용 위험 가중치'] = (1 / (test_df['신용 점수'] + 1)) * test_df['신용 문제 발생 횟수']
+    
+    # 부채 비율 변화율
+    train_df['부채 비율 변화율'] = train_df['총 부채 비율'] - train_df['대출 비율']
+    test_df['부채 비율 변화율'] = test_df['총 부채 비율'] - test_df['대출 비율']
+    
+    # LTV 변화율
+    train_df['LTV 변화율'] = train_df['LTV'] / (train_df['신용 거래 연수'] + 1)
+    test_df['LTV 변화율'] = test_df['LTV'] / (test_df['신용 거래 연수'] + 1)
+    
+    # 신용 한도 대비 신용 사용률 변화
+    train_df['신용 한도 대비 신용 사용률 변화'] = train_df['최대 신용한도'] / (train_df['신용 거래 연수'] + 1)
+    test_df['신용 한도 대비 신용 사용률 변화'] = test_df['최대 신용한도'] / (test_df['신용 거래 연수'] + 1)
+    
+    # 최근 연체율
+    train_df['최근 연체율'] = train_df['신용 문제 발생 횟수'] / (train_df['마지막 연체 이후 경과 개월 수'] + 1)
+    test_df['최근 연체율'] = test_df['신용 문제 발생 횟수'] / (test_df['마지막 연체 이후 경과 개월 수'] + 1)
+    
+    # 신용 한도 대비 부채 부담
+    train_df['신용 한도 대비 부채 부담'] = (train_df['현재 미상환 신용액'] + train_df['현재 대출 잔액']) / (train_df['최대 신용한도'] + 1)
+    test_df['신용 한도 대비 부채 부담'] = (test_df['현재 미상환 신용액'] + test_df['현재 대출 잔액']) / (test_df['최대 신용한도'] + 1)
+    
+    # 월 저축 가능액
+    train_df['월 저축 가능액'] = (train_df['연간 소득'] / 12) - train_df['월 상환 부채액']
+    test_df['월 저축 가능액'] = (test_df['연간 소득'] / 12) - test_df['월 상환 부채액']
+    
+    # 연체 빈도 가중치
+    train_df['연체 빈도 가중치'] = train_df['신용 문제 발생 횟수'] / (train_df['마지막 연체 이후 경과 개월 수'] + 1)
+    test_df['연체 빈도 가중치'] = test_df['신용 문제 발생 횟수'] / (test_df['마지막 연체 이후 경과 개월 수'] + 1)
+    
+    # 연체 심각도 지수
+    train_df['연체 심각도 지수'] = (train_df['최근 연체 있음'] * 2 + train_df['신용 문제 발생 횟수']) / (train_df['신용 거래 연수'] + 1)
+    test_df['연체 심각도 지수'] = (test_df['최근 연체 있음'] * 2 + test_df['신용 문제 발생 횟수']) / (test_df['신용 거래 연수'] + 1)
+    
+    # 연체 후 회복력
+    train_df['연체 후 회복력'] = train_df['마지막 연체 이후 경과 개월 수'] / (train_df['신용 문제 발생 횟수'] + 1)
+    test_df['연체 후 회복력'] = test_df['마지막 연체 이후 경과 개월 수'] / (test_df['신용 문제 발생 횟수'] + 1)
