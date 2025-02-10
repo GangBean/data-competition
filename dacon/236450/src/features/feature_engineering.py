@@ -79,7 +79,7 @@ class FeatureEngineer:
             set(self.config['features']['numerical_discrete']) |
             set(self.config['features']['numerical_continuous'])))
         
-        # logging.info(f"[Before Filtering] {selected_cols} / {len(selected_cols)} 개")
+        logging.info(f"[Before Filtering] {len(selected_cols)} / train: {len(train_df.columns)} 개")
         
         # 1. Importance based filtering
         if self.config['train']['importance']['use']:
@@ -118,7 +118,7 @@ class FeatureEngineer:
         if self.config['exclude']:
             selected_cols = sorted(list(set(selected_cols) - set(self.config['exclude'])))
 
-        logging.info(f"[Selected Features]: {selected_cols} / {len(selected_cols)} 개")
+        logging.info(f"[Selected Features]: {selected_cols} -> {len(selected_cols)} / {len(train_df.columns)} 개")
 
         train_df.drop(columns=[col for col in train_df.columns if col != self.config['data']['label_column'] and col not in selected_cols], inplace=True)
         test_df.drop(columns=[col for col in test_df.columns if col != self.config['data']['label_column'] and col not in selected_cols], inplace=True)
@@ -126,17 +126,18 @@ class FeatureEngineer:
     def process_features(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Process all features"""
         create_feature(train_df, test_df)
+        logging.info(f"[After create]: {train_df.columns} / {len(train_df.columns)} 개")
+
         self._select_feature(train_df, test_df)
 
-        # logging.info(f"[After selection]: {train_df.columns} / {len(train_df.columns)} 개")
 
         # Get column lists with defaults
         nominal_cols = sorted(list(set(self.config['features'].get('nominal_columns', self.default_nominal)).intersection(set(train_df.columns))))
         ordinal_cols = sorted(list(set(self.ordinal_feature_names if self.ordinal_feature_names else self.default_ordinal).intersection(set(train_df.columns))))
         numerical_cols = sorted(list(set(train_df.columns) - set(nominal_cols) - set(ordinal_cols) - {self.config['data']['label_column']}))
 
-        # logging.info(f"개수: nominal: {len(nominal_cols)} / ordinal: {len(ordinal_cols)} / numerical: {len(numerical_cols)}")
-        # logging.info(f"비교: {(set(nominal_cols) | set(ordinal_cols) | set(numerical_cols)) - set(train_df.columns)}")
+        logging.info(f"개수: 전체: {len(train_df.columns)} / nominal: {len(nominal_cols)} / ordinal: {len(ordinal_cols)} / numerical: {len(numerical_cols)}")
+        logging.info(f"비교: {(set(nominal_cols) | set(ordinal_cols) | set(numerical_cols)) - set(train_df.columns)}")
         
         # Encode nominal features
         train_nominal, test_nominal = self._encode_nominal_features(
