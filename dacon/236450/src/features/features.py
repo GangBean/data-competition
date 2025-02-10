@@ -124,3 +124,14 @@ def create_feature(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
 
     train_df['신용 위험'] = (1 / (train_df['신용 점수'] + 1)) * train_df['최근 연체 있음']
     test_df['신용 위험'] = (1 / (test_df['신용 점수'] + 1)) * test_df['최근 연체 있음']
+
+    income_savings_rate = 0.4  # 소득에서 저축 가능한 비율 (40%로 가정)
+    train_df['자산2'] = (train_df['연간 소득'] * income_savings_rate) + train_df['최대 신용한도'] - train_df['현재 대출 잔액']
+    test_df['자산2'] = (test_df['연간 소득'] * income_savings_rate) + test_df['최대 신용한도'] - test_df['현재 대출 잔액']
+
+    train_df['자산3'] = (train_df['연간 소득'] * income_savings_rate) - train_df['현재 대출 잔액'] * (1 + train_df['금융 위험 지수'])
+    test_df['자산3'] = (test_df['연간 소득'] * income_savings_rate) - test_df['현재 대출 잔액'] * (1 + test_df['금융 위험 지수'])
+
+    train_df['자산4'] = train_df['연간 소득'] + (train_df['부채 대비 신용 점수'] * train_df['최대 신용한도'])
+    test_df['자산4'] = test_df['연간 소득'] + (test_df['부채 대비 신용 점수'] * test_df['최대 신용한도'])
+

@@ -132,13 +132,20 @@ def main():
     parser.add_argument('--wandb', action='store_true', help='Enable wandb logging')
     parser.add_argument('--wandb-no', action='store_false', dest='wandb', help='Disable wandb logging')
     parser.add_argument('--desc', type=str, default="", help='Add a description for wandb logging')  # --desc 추가
+    parser.add_argument('--exclude', type=str, default="", help='specify exclude features')  # --desc 추가
     parser.set_defaults(wandb=None)  # None으로 설정하여 config 파일의 설정을 따르도록 함
     args = parser.parse_args()
+
+    excluded_features = args.exclude.split(',') if args.exclude else []
+    excluded_features = [feature.strip() for feature in excluded_features if feature.strip()]
 
     # Set random seed
     config = load_config()
     random_state = config['train']['random_state']
     set_seed(random_state)
+
+    # exclude features
+    if excluded_features: config['exclude'] = excluded_features
     
     # Setup
     setup_logging()

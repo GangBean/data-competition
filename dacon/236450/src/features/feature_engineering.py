@@ -115,6 +115,9 @@ class FeatureEngineer:
             
             selected_cols = sorted(list(set(selected_cols).intersection(features_in_groups)))
 
+        if self.config['exclude']:
+            selected_cols = sorted(list(set(selected_cols) - set(self.config['exclude'])))
+
         logging.info(f"[Selected Features]: {selected_cols} / {len(selected_cols)} 개")
 
         train_df.drop(columns=[col for col in train_df.columns if col != self.config['data']['label_column'] and col not in selected_cols], inplace=True)

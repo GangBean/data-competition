@@ -75,6 +75,9 @@ features:
     - 부채 증가 위험
     - 대출 목적_부채 부담
     - 신용 위험
+    - 자산2
+    - 자산3
+    - 자산4
 
 groups:
   주거:
@@ -133,6 +136,9 @@ groups:
     - 자산
     - 체납 세금 압류 횟수
     - 최대 신용한도
+    - 자산2
+    - 자산3
+    - 자산4
 
 model:
   type: "catboost"  # "xgboost", "lightgbm", "catboost" 중 선택
@@ -180,6 +186,9 @@ train:
       - 파산/연체
       - 금융위험
       - 자산
+
+exclude:
+  - 
 
 wandb:
   enabled: true  # wandb logging 활성화/비활성화
