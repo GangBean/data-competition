@@ -193,12 +193,26 @@ def create_feature(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
     test_df['연체 후 회복력'] = test_df['마지막 연체 이후 경과 개월 수'] / (test_df['신용 문제 발생 횟수'] + 1)
 
     # Nominal Column 값별 Numerical 변수의 통계값 추가
-    nominal_cols = ['주거 형태', '대출 목적', '대출 상환 기간']
-    numerical_cols = ['연간 소득', '현재 대출 잔액', '월 상환 부채액', '신용 점수']
+    # nominal_cols = ['주거 형태', '대출 목적', '대출 상환 기간']
+    # numerical_cols = ['연간 소득', '현재 대출 잔액', '월 상환 부채액', '신용 점수']
 
-    for cat_col in nominal_cols:
+    # for cat_col in nominal_cols:
+    #     stats = train_df.groupby(cat_col)[numerical_cols].agg(['mean', 'std', 'min', 'max'])
+    #     stats.columns = [f'{cat_col}_{num_col}_{agg}' for num_col, agg in stats.columns]
+
+    #     train_df.loc[:, stats.columns] = train_df.merge(stats, on=cat_col, how='left')[stats.columns]
+    #     test_df.loc[:, stats.columns] = test_df.merge(stats, on=cat_col, how='left')[stats.columns]
+
+
+def create_statistical_features(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
+    # Categorical Feature와 Numerical Feature 자동 분리
+    categorical_cols = train_df.select_dtypes(include=['object', 'category']).columns.tolist()
+    numerical_cols = train_df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+
+    for cat_col in categorical_cols:
         stats = train_df.groupby(cat_col)[numerical_cols].agg(['mean', 'std', 'min', 'max'])
         stats.columns = [f'{cat_col}_{num_col}_{agg}' for num_col, agg in stats.columns]
 
         train_df.loc[:, stats.columns] = train_df.merge(stats, on=cat_col, how='left')[stats.columns]
         test_df.loc[:, stats.columns] = test_df.merge(stats, on=cat_col, how='left')[stats.columns]
+    

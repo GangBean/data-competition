@@ -7,7 +7,7 @@ from sklearn.preprocessing import (
 from typing import Dict, Tuple
 import logging
 
-from .features import create_feature
+from .features import create_feature, create_statistical_features
 
 class FeatureEngineer:
     def __init__(self, config: Dict):
@@ -130,6 +130,8 @@ class FeatureEngineer:
 
         self._select_feature(train_df, test_df)
 
+        create_statistical_features(train_df, test_df)
+        logging.info(f"[After statistical create]: {train_df.columns} / {len(train_df.columns)} 개")
 
         # Get column lists with defaults
         nominal_cols = sorted(list(set(self.config['features'].get('nominal_columns', self.default_nominal)).intersection(set(train_df.columns))))
