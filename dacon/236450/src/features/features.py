@@ -1,6 +1,9 @@
 import numpy as np
 import pandas as pd
 import logging
+from itertools import combinations
+from sklearn.decomposition import PCA
+
 
 def create_feature(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
     # Create new features
@@ -194,7 +197,8 @@ def create_feature(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
 
     # Nominal Column 값별 Numerical 변수의 통계값 추가
     # nominal_cols = ['주거 형태', '대출 목적', '대출 상환 기간']
-    # numerical_cols = ['연간 소득', '현재 대출 잔액', '월 상환 부채액', '신용 점수']
+    # numerical_cols = ['연간 소득', '현재 대출 잔액', '월 상환 부채액', '신용 점수', 
+    #                   '체납 세금 압류 횟수', '신용 거래 연수', '최대 신용한도', '현재 미상환 신용액', 'DTI', 'LTV']
 
     # for cat_col in nominal_cols:
     #     stats = train_df.groupby(cat_col)[numerical_cols].agg(['mean', 'std', 'min', 'max'])
@@ -215,4 +219,50 @@ def create_statistical_features(train_df: pd.DataFrame, test_df: pd.DataFrame) -
 
         train_df.loc[:, stats.columns] = train_df.merge(stats, on=cat_col, how='left')[stats.columns]
         test_df.loc[:, stats.columns] = test_df.merge(stats, on=cat_col, how='left')[stats.columns]
+
+def create_mixup_features(train_df: pd.DataFrame, test_df: pd.DataFrame) -> list[str]:
+    new_cols = []
+    # Categorical Feature 자동 분리
+    categorical_cols = train_df.select_dtypes(include=['object', 'category']).columns.tolist()
+    # logging.info(f"[Before mixup] {train_df.dtypes}, {len(train_df.columns)}, {categorical_cols}")
+
+    # 두 개 이상의 categorical feature 조합 생성
+    for r in range(2, len(categorical_cols) + 1):  # 2개 조합부터 모든 조합 생성
+        for cat_combo in combinations(categorical_cols, r):
+            new_col = "_".join(cat_combo)
+            train_df.loc[:, new_col] = train_df[list(cat_combo)].astype(str).agg('_'.join, axis=1)
+            test_df.loc[:, new_col] = test_df[list(cat_combo)].astype(str).agg('_'.join, axis=1)
+            new_cols.append(new_col)
+
+    return new_cols
+
+
+def pca(train_df: pd.DataFrame, test_df: pd.DataFrame, num: int = 10) -> tuple[pd.DataFrame, pd.DataFrame]:
+    # 적용할 Feature 선택 (Object 타입 제외)
+    numerical_features = train_df.drop(["채무 불이행 여부"], axis=1).select_dtypes(exclude=['object']).columns
     
+    # PCA 적용 (설정 가능한 주성분 개수)
+    n_components = num  # 줄이고 싶은 차원 수
+    pca = PCA(n_components=n_components)
+
+    # PCA 변환 수행
+    train_pca = pca.fit_transform(train_df[numerical_features])
+    test_pca = pca.transform(test_df[numerical_features])
+
+    # 변환된 데이터를 DataFrame으로 변환
+    train_pca_df = pd.DataFrame(train_pca, columns=[f"PCA_{i+1}" for i in range(n_components)])
+    test_pca_df = pd.DataFrame(test_pca, columns=[f"PCA_{i+1}" for i in range(n_components)])
+
+    # 기존 데이터와 결합
+    train_df_pca = pd.concat([train_df.reset_index(drop=True), train_pca_df], axis=1)
+    test_df_pca = pd.concat([test_df.reset_index(drop=True), test_pca_df], axis=1)
+
+    # 기존 숫자 Feature 제거 (선택사항)
+    drop_original_features = True
+    if drop_original_features:
+        train_df_pca.drop(columns=numerical_features, inplace=True)
+        test_df_pca.drop(columns=numerical_features, inplace=True)
+
+    print("PCA 변환 완료, 최종 Feature 개수:", train_df_pca.shape[1])
+
+    return train_df_pca, test_df_pca

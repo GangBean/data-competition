@@ -7,7 +7,7 @@ from sklearn.preprocessing import (
 from typing import Dict, Tuple
 import logging
 
-from .features import create_feature, create_statistical_features
+from .features import create_feature, create_statistical_features, create_mixup_features, pca
 
 class FeatureEngineer:
     def __init__(self, config: Dict):
@@ -126,20 +126,22 @@ class FeatureEngineer:
     def process_features(self, train_df: pd.DataFrame, test_df: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame]:
         """Process all features"""
         create_feature(train_df, test_df)
-        logging.info(f"[After create]: {train_df.columns} / {len(train_df.columns)} 개")
+        # logging.info(f"[After create]: {train_df.columns} / {len(train_df.columns)} 개")
 
         self._select_feature(train_df, test_df)
 
-        create_statistical_features(train_df, test_df)
-        logging.info(f"[After statistical create]: {train_df.columns} / {len(train_df.columns)} 개")
+        mixup_cols = create_mixup_features(train_df, test_df) # mixup 은 모두 nominal로 처리
+        # logging.info(f"[After mixup create]: {train_df.columns} / {len(train_df.columns)} 개 / {mixup_cols} / {len(mixup_cols)} 개")
 
+        create_statistical_features(train_df, test_df)
+        # logging.info(f"[After statistical create]: {train_df.columns} / {len(train_df.columns)} 개")
         # Get column lists with defaults
-        nominal_cols = sorted(list(set(self.config['features'].get('nominal_columns', self.default_nominal)).intersection(set(train_df.columns))))
+        nominal_cols = sorted(list((set(self.config['features'].get('nominal_columns', self.default_nominal)) | set(mixup_cols)).intersection(set(train_df.columns))))
         ordinal_cols = sorted(list(set(self.ordinal_feature_names if self.ordinal_feature_names else self.default_ordinal).intersection(set(train_df.columns))))
         numerical_cols = sorted(list(set(train_df.columns) - set(nominal_cols) - set(ordinal_cols) - {self.config['data']['label_column']}))
 
         logging.info(f"개수: 전체: {len(train_df.columns)} / nominal: {len(nominal_cols)} / ordinal: {len(ordinal_cols)} / numerical: {len(numerical_cols)}")
-        logging.info(f"비교: {(set(nominal_cols) | set(ordinal_cols) | set(numerical_cols)) - set(train_df.columns)}")
+        # logging.info(f"비교: {(set(nominal_cols) | set(ordinal_cols) | set(numerical_cols)) - set(train_df.columns)}")
         
         # Encode nominal features
         train_nominal, test_nominal = self._encode_nominal_features(
@@ -175,6 +177,7 @@ class FeatureEngineer:
         ], axis=1)
 
         logging.info(f"[Final Features]: {train_processed.columns} / {len(train_processed.columns)} 개")
+        train_processed, test_processed = pca(train_processed, test_processed, self.config["train"]["pca_num"])
 
         return train_processed, test_processed
     
